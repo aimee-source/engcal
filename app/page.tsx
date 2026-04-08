@@ -97,6 +97,22 @@ export default function Home() {
 
   const colors = (project: string) => PROJECT_COLORS[project] ?? PROJECT_COLORS.other;
 
+  // Per-engineer metrics
+  const engStats = new Map<string, { released: number; inReview: number; inProgress: number }>();
+  for (const f of features) {
+    if (!f.dri) continue;
+    if (!engStats.has(f.dri)) engStats.set(f.dri, { released: 0, inReview: 0, inProgress: 0 });
+    const s = engStats.get(f.dri)!;
+    if (f.releaseDate) s.released++;
+    else if (f.demoDate) s.inReview++;
+    else s.inProgress++;
+  }
+  const engList = Array.from(engStats.entries()).sort((a, b) => {
+    const totalA = a[1].released + a[1].inReview + a[1].inProgress;
+    const totalB = b[1].released + b[1].inReview + b[1].inProgress;
+    return totalB - totalA;
+  });
+
   return (
     <div className="min-h-screen bg-black">
       <header className="bg-zinc-950 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
@@ -211,6 +227,35 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Per-engineer metrics */}
+      {engList.length > 0 && (
+        <div className="px-6 pb-6">
+          <h3 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Engineer Tickets</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {engList.map(([dri, s]) => {
+              const total = s.released + s.inReview + s.inProgress;
+              const initials = dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <div key={dri} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold text-white shrink-0">
+                      {initials}
+                    </span>
+                    <span className="text-xs text-zinc-300 truncate">{dri.split(" ")[0]}</span>
+                  </div>
+                  <div className="text-lg font-bold text-white">{total}</div>
+                  <div className="flex gap-1 mt-1 text-[10px]">
+                    {s.released > 0 && <span className="text-blue-400">🔵 {s.released}</span>}
+                    {s.inReview > 0 && <span className="text-green-400">🟢 {s.inReview}</span>}
+                    {s.inProgress > 0 && <span className="text-yellow-400">🟡 {s.inProgress}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Feature detail modal */}
       {selected && (
