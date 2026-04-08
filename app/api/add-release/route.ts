@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const releases: { ticketId: string; title: string; project: string; linearUrl?: string; dri?: string; startDate?: number; demoDate?: number }[] = body.releases ?? [];
-  const releaseDate: number = body.releaseDate ?? Date.now();
+  const releases: { ticketId: string; title: string; project: string; linearUrl?: string; dri?: string; startDate?: number; demoDate?: number; releaseDate?: number }[] = body.releases ?? [];
+  const batchReleaseDate: number = body.releaseDate ?? Date.now();
 
   if (!Array.isArray(releases) || releases.length === 0) {
     return NextResponse.json({ error: "No releases provided" }, { status: 400 });
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       ticketId: r.ticketId,
       title: r.title,
       project: r.project,
-      releaseDate,
+      releaseDate: r.releaseDate ?? batchReleaseDate,
       ...(r.linearUrl ? { linearUrl: r.linearUrl } : {}),
       ...(r.dri ? { dri: r.dri } : {}),
       ...(r.startDate ? { startDate: r.startDate } : {}),
