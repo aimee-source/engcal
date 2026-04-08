@@ -13,7 +13,7 @@ const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> 
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   start:   { bg: "bg-yellow-500/20", text: "text-yellow-300", icon: "🟡" },
-  demo:    { bg: "bg-zinc-600/40",   text: "text-zinc-300",   icon: "⚪" },
+  demo:    { bg: "bg-green-500/20",  text: "text-green-300",  icon: "🟢" },
   release: { bg: "bg-blue-500/20",   text: "text-blue-300",   icon: "🔵" },
 };
 const EVENT_ICONS: Record<string, string> = {
@@ -118,7 +118,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-yellow-300">{EVENT_COLORS.start.icon} started</span>
-            <span className="text-zinc-400">{EVENT_COLORS.demo.icon} demo&apos;d</span>
+            <span className="text-green-300">{EVENT_COLORS.demo.icon} demo&apos;d</span>
             <span className="text-blue-300">{EVENT_COLORS.release.icon} released</span>
           </div>
         </div>
