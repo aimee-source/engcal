@@ -4,11 +4,11 @@ import { useState } from "react";
 import { db } from "@/lib/db";
 
 const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  web:       { bg: "bg-blue-100",   text: "text-blue-800",   dot: "bg-blue-500" },
-  server:    { bg: "bg-violet-100", text: "text-violet-800", dot: "bg-violet-500" },
-  mobile:    { bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-500" },
-  functions: { bg: "bg-green-100",  text: "text-green-800",  dot: "bg-green-500" },
-  other:     { bg: "bg-gray-100",   text: "text-gray-700",   dot: "bg-gray-400" },
+  web:       { bg: "bg-blue-900/60",   text: "text-blue-300",   dot: "bg-blue-400" },
+  server:    { bg: "bg-violet-900/60", text: "text-violet-300", dot: "bg-violet-400" },
+  mobile:    { bg: "bg-orange-900/60", text: "text-orange-300", dot: "bg-orange-400" },
+  functions: { bg: "bg-green-900/60",  text: "text-green-300",  dot: "bg-green-400" },
+  other:     { bg: "bg-zinc-800",      text: "text-zinc-300",   dot: "bg-zinc-500" },
 };
 
 const EVENT_ICONS: Record<string, string> = {
@@ -93,15 +93,15 @@ export default function Home() {
   const colors = (project: string) => PROJECT_COLORS[project] ?? PROJECT_COLORS.other;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-950 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-gray-900">engcal</h1>
-          <span className="text-sm text-gray-400">Avida Engineering Velocity</span>
+          <h1 className="text-lg font-semibold text-white">engcal</h1>
+          <span className="text-sm text-zinc-500">Avida Engineering Velocity</span>
         </div>
-        <div className="flex items-center gap-6 text-sm text-gray-500 flex-wrap justify-end">
+        <div className="flex items-center gap-6 text-sm text-zinc-400 flex-wrap justify-end">
           {avgCycleDays !== null && (
-            <span>⚡ Avg cycle time: <strong className="text-gray-800">{avgCycleDays}d</strong></span>
+            <span>⚡ Avg cycle time: <strong className="text-white">{avgCycleDays}d</strong></span>
           )}
           <div className="flex items-center gap-3">
             {Object.entries(PROJECT_COLORS).filter(([k]) => k !== "other").map(([proj, c]) => (
@@ -111,7 +111,7 @@ export default function Home() {
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span>{EVENT_ICONS.start} started</span>
             <span>{EVENT_ICONS.demo} demo</span>
             <span>{EVENT_ICONS.release} released</span>
@@ -121,15 +121,15 @@ export default function Home() {
 
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 text-xl">‹</button>
-          <h2 className="text-xl font-semibold text-gray-800">{MONTHS[month]} {year}</h2>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 text-xl">›</button>
+          <button onClick={prevMonth} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 text-xl">‹</button>
+          <h2 className="text-xl font-semibold text-white">{MONTHS[month]} {year}</h2>
+          <button onClick={nextMonth} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 text-xl">›</button>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-gray-200">
+        <div className="bg-zinc-950 rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-zinc-800">
             {DAYS.map(d => (
-              <div key={d} className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div key={d} className="py-2 text-center text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                 {d}
               </div>
             ))}
@@ -151,12 +151,12 @@ export default function Home() {
               return (
                 <div
                   key={i}
-                  className={`min-h-28 p-2 border-b border-r border-gray-100 ${!isCurrentMonth ? "bg-gray-50" : ""}`}
+                  className={`min-h-28 p-2 border-b border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
                 >
                   {isCurrentMonth && (
                     <>
                       <div className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                        isToday ? "bg-blue-600 text-white" : "text-gray-700"
+                        isToday ? "bg-blue-600 text-white" : "text-zinc-400"
                       }`}>
                         {dayNum}
                       </div>
@@ -186,45 +186,45 @@ export default function Home() {
 
       {/* Feature detail modal */}
       {selected && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setSelected(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors(selected.project).bg} ${colors(selected.project).text}`}>
                     {selected.project}
                   </span>
-                  {selected.ticketId && <span className="text-xs text-gray-400">{selected.ticketId}</span>}
+                  {selected.ticketId && <span className="text-xs text-zinc-500">{selected.ticketId}</span>}
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">{selected.title}</h3>
-                {selected.dri && <p className="text-sm text-gray-500 mt-0.5">DRI: {selected.dri}</p>}
+                <h3 className="text-base font-semibold text-white">{selected.title}</h3>
+                {selected.dri && <p className="text-sm text-zinc-400 mt-0.5">DRI: {selected.dri}</p>}
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none ml-4">×</button>
+              <button onClick={() => setSelected(null)} className="text-zinc-500 hover:text-white text-xl leading-none ml-4">×</button>
             </div>
 
             <div className="space-y-2 text-sm">
               {selected.startDate && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{EVENT_ICONS.start} Started</span>
-                  <span className="font-medium text-gray-800">{new Date(selected.startDate).toLocaleDateString()}</span>
+                  <span className="text-zinc-400">{EVENT_ICONS.start} Started</span>
+                  <span className="font-medium text-white">{new Date(selected.startDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.demoDate && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{EVENT_ICONS.demo} Demo&apos;d to Product</span>
-                  <span className="font-medium text-gray-800">{new Date(selected.demoDate).toLocaleDateString()}</span>
+                  <span className="text-zinc-400">{EVENT_ICONS.demo} Demo&apos;d to Product</span>
+                  <span className="font-medium text-white">{new Date(selected.demoDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.releaseDate && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{EVENT_ICONS.release} Released to Production</span>
-                  <span className="font-medium text-gray-800">{new Date(selected.releaseDate).toLocaleDateString()}</span>
+                  <span className="text-zinc-400">{EVENT_ICONS.release} Released to Production</span>
+                  <span className="font-medium text-white">{new Date(selected.releaseDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.startDate && selected.releaseDate && (
-                <div className="flex justify-between pt-2 border-t border-gray-100">
-                  <span className="text-gray-500">⚡ Cycle time</span>
-                  <span className="font-semibold text-gray-900">
+                <div className="flex justify-between pt-2 border-t border-zinc-700">
+                  <span className="text-zinc-400">⚡ Cycle time</span>
+                  <span className="font-semibold text-white">
                     {Math.round((selected.releaseDate - selected.startDate) / 86400000)}d
                   </span>
                 </div>
@@ -232,7 +232,7 @@ export default function Home() {
             </div>
 
             {selected.notes && (
-              <p className="mt-3 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{selected.notes}</p>
+              <p className="mt-3 text-sm text-zinc-400 bg-zinc-800 rounded-lg p-3">{selected.notes}</p>
             )}
 
             {selected.linearUrl && (
@@ -240,7 +240,7 @@ export default function Home() {
                 href={selected.linearUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 block text-center text-sm text-blue-600 hover:text-blue-800"
+                className="mt-4 block text-center text-sm text-blue-400 hover:text-blue-300"
               >
                 View in Linear →
               </a>
