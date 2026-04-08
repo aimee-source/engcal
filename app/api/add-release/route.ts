@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const releases: { ticketId: string; title: string; project: string; linearUrl?: string; dri?: string }[] = body.releases ?? [];
+  const releases: { ticketId: string; title: string; project: string; linearUrl?: string; dri?: string; startDate?: number; demoDate?: number }[] = body.releases ?? [];
   const releaseDate: number = body.releaseDate ?? Date.now();
 
   if (!Array.isArray(releases) || releases.length === 0) {
@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       releaseDate,
       ...(r.linearUrl ? { linearUrl: r.linearUrl } : {}),
       ...(r.dri ? { dri: r.dri } : {}),
+      ...(r.startDate ? { startDate: r.startDate } : {}),
+      ...(r.demoDate ? { demoDate: r.demoDate } : {}),
     });
   });
 
