@@ -179,7 +179,12 @@ export default function Home() {
                               className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${ec.bg} ${ec.text} hover:opacity-80`}
                             >
                               <span className="shrink-0">{ec.icon}</span>
-                              <span className="truncate">{ev.feature.title}</span>
+                              <span className="truncate flex-1">{ev.feature.title}</span>
+                              {ev.feature.dri && (
+                                <span className="shrink-0 w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-semibold">
+                                  {ev.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                </span>
+                              )}
                             </button>
                           );
                         })}

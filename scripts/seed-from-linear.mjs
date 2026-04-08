@@ -60,6 +60,7 @@ async function fetchAllCompletedIssues() {
           startedAt
           completedAt
           team { name }
+          assignee { name }
           history(first: 50) {
             nodes {
               createdAt
@@ -108,6 +109,7 @@ async function main() {
       ...(issue.startedAt ? { startDate: new Date(issue.startedAt).getTime() } : {}),
       ...(inReviewEntry ? { demoDate: new Date(inReviewEntry.createdAt).getTime() } : {}),
       ...(issue.completedAt ? { releaseDate: new Date(issue.completedAt).getTime() } : {}),
+      ...(issue.assignee?.name ? { dri: issue.assignee.name } : {}),
     };
   });
 
