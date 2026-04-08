@@ -154,6 +154,14 @@ export default function Home() {
               const events = dateKey ? (eventsByDay.get(dateKey) ?? []) : [];
 
               const hasEvents = events.length > 0;
+              const isSunday = i % 7 === 6;
+              const weekReleaseCount = isSunday && isCurrentMonth ? features.filter(f => {
+                if (!f.releaseDate) return false;
+                const weekStart = new Date(year, month, dayNum - 6).getTime();
+                const weekEnd = new Date(year, month, dayNum, 23, 59, 59).getTime();
+                return f.releaseDate >= weekStart && f.releaseDate <= weekEnd;
+              }).length : 0;
+              const weekGoalMet = weekReleaseCount >= 5;
               return (
                 <div
                   key={i}
@@ -189,6 +197,12 @@ export default function Home() {
                           );
                         })}
                       </div>
+                      {isSunday && (
+                        <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-400">
+                          <span>{weekGoalMet ? "✅" : "⬜"}</span>
+                          <span>{weekReleaseCount}/5 released</span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
