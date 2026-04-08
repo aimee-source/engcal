@@ -203,7 +203,16 @@ export default function Home() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors(selected.project).bg} ${colors(selected.project).text}`}>
                     {selected.project}
                   </span>
-                  {selected.ticketId && <span className="text-xs text-zinc-500">{selected.ticketId}</span>}
+                  {selected.ticketId && (
+                    <a
+                      href={selected.linearUrl ?? `https://linear.app/issue/${selected.ticketId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-zinc-500 hover:text-blue-400 hover:underline transition-colors"
+                    >
+                      {selected.ticketId}
+                    </a>
+                  )}
                 </div>
                 <h3 className="text-base font-semibold text-white">{selected.title}</h3>
                 {selected.dri && <p className="text-sm text-zinc-400 mt-0.5">DRI: {selected.dri}</p>}
