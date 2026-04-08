@@ -61,19 +61,19 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-  // Build map: dateKey -> DayEvent[]
+  // Build map: dateKey -> DayEvent[] — each ticket once, at its latest status
   const eventsByDay = new Map<string, DayEvent[]>();
   for (const f of features) {
-    const add = (ts: number | undefined, type: DayEvent["type"]) => {
-      if (!ts) return;
-      const d = new Date(ts);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      if (!eventsByDay.has(key)) eventsByDay.set(key, []);
-      eventsByDay.get(key)!.push({ feature: f, type });
-    };
-    add(f.startDate, "start");
-    add(f.demoDate, "demo");
-    add(f.releaseDate, "release");
+    const [ts, type]: [number | undefined, DayEvent["type"]] = f.releaseDate
+      ? [f.releaseDate, "release"]
+      : f.demoDate
+      ? [f.demoDate, "demo"]
+      : [f.startDate, "start"];
+    if (!ts) continue;
+    const d = new Date(ts);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
+    eventsByDay.get(key)!.push({ feature: f, type });
   }
 
   function prevMonth() {
