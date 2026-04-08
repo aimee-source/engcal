@@ -14,7 +14,7 @@ const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> 
 const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   start:   { bg: "bg-yellow-200", text: "text-yellow-800", icon: "🟡" },
   demo:    { bg: "bg-green-200",  text: "text-green-800",  icon: "🟢" },
-  release: { bg: "bg-blue-200",   text: "text-blue-800",   icon: "🔵" },
+  release: { bg: "bg-[#c8f5e4]",  text: "text-teal-900",   icon: "🔵" },
 };
 const EVENT_ICONS: Record<string, string> = {
   start:   EVENT_COLORS.start.icon,
@@ -161,7 +161,7 @@ export default function Home() {
                   key={i}
                   className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
                     !isCurrentMonth ? "bg-zinc-900/30" :
-                    hasEvents ? "bg-[#c8f5e4]" : ""
+                    hasEvents ? "bg-[#e8fdf5]" : ""
                   }`}
                 >
                   {isCurrentMonth && (
