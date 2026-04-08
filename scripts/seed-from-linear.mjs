@@ -36,7 +36,7 @@ async function linearQuery(query) {
   return res.json();
 }
 
-async function fetchAllCompletedIssues() {
+async function fetchIssues(filter) {
   const issues = [];
   let cursor = null;
   let page = 1;
@@ -47,10 +47,7 @@ async function fetchAllCompletedIssues() {
       issues(
         first: 50
         ${afterClause}
-        filter: {
-          state: { type: { in: ["completed"] } }
-          completedAt: { gte: "${SINCE.toISOString()}", lte: "${UNTIL.toISOString()}" }
-        }
+        filter: ${filter}
         orderBy: updatedAt
       ) {
         pageInfo { hasNextPage endCursor }
@@ -87,9 +84,25 @@ async function fetchAllCompletedIssues() {
 }
 
 async function main() {
-  console.log(`Fetching completed Linear issues since ${SINCE.toDateString()}...`);
-  const issues = await fetchAllCompletedIssues();
-  console.log(`\nTotal issues fetched: ${issues.length}`);
+  console.log(`Fetching April 2026 issues...`);
+
+  const completedFilter = `{ state: { type: { in: ["completed"] } } completedAt: { gte: "${SINCE.toISOString()}", lte: "${UNTIL.toISOString()}" } }`;
+  const activeFilter = `{ state: { type: { in: ["started", "inReview"] } } startedAt: { gte: "${SINCE.toISOString()}" } }`;
+
+  const [completed, active] = await Promise.all([
+    fetchIssues(completedFilter),
+    fetchIssues(activeFilter),
+  ]);
+
+  // Merge, dedupe by identifier
+  const seen = new Set();
+  const issues = [...completed, ...active].filter(i => {
+    if (seen.has(i.identifier)) return false;
+    seen.add(i.identifier);
+    return true;
+  });
+
+  console.log(`\nTotal issues fetched: ${issues.length} (${completed.length} completed, ${active.length} active)`);
 
   if (issues.length === 0) {
     console.log("No issues found. Check your Linear API key and filters.");
