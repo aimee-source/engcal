@@ -61,16 +61,9 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-  // Only show features released in the current viewed month
-  const visibleFeatures = features.filter(f => {
-    if (!f.releaseDate) return false;
-    const d = new Date(f.releaseDate);
-    return d.getFullYear() === year && d.getMonth() === month;
-  });
-
   // Build map: dateKey -> DayEvent[]
   const eventsByDay = new Map<string, DayEvent[]>();
-  for (const f of visibleFeatures) {
+  for (const f of features) {
     const add = (ts: number | undefined, type: DayEvent["type"]) => {
       if (!ts) return;
       const d = new Date(ts);
