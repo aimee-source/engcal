@@ -1,69 +1,50 @@
-# engcal — Engineering Velocity Calendar
+# engcal — Plan & Status
 
-## Overview
-A public monthly calendar showing every feature's lifecycle from start → demo → production. Avida's answer to Anthropic's 2026 shipping log. Goal: make cycle times visible so we can shorten them.
-
----
-
-## Features
-
-### 1. Calendar View
-- Monthly grid (Mon–Sun), navigate month to month
-- Each day shows feature events as colored chips
-- 🟢 Started · 🟡 Demo'd · 🔵 Released
-- Color-coded by project: web / server / mobile / functions
-- Click any chip → detail modal (title, DRI, all dates, cycle time, Linear link)
-- Avg cycle time shown in header
-
-### 2. Data Entry — Automated (Release Bot)
-- Release bot detects production deploy → extracts Linear ticket IDs from screenshot
-- POSTs ticket data to `/api/add-release` with release date
-- Upserts by ticketId — safe to call multiple times
-
-### 3. Data Entry — Manual (Future)
-- Form for DRIs to add start dates and demo dates
-- Auth via shared password or magic code
-
-### 4. Metrics (Future)
-- Per-project cycle time breakdown
-- Rolling 4-week velocity chart
-- Demo → release lag tracking
+## Goal
+Live engineering velocity calendar that automatically tracks every feature from start → demo → release. Public link shared with eng team, leads, and product.
 
 ---
 
-## Tech Stack
-- **Frontend/Backend:** Next.js 15 (App Router)
-- **Database:** InstantDB (real-time, no polling needed)
-- **Deployment:** Vercel (`engcal.vercel.app`)
+## ✅ Done
+
+### Core Calendar
+- Monthly grid, Mon–Sun, navigate months
+- Each ticket shows once at its latest status (🔵 released / 🟢 in review / 🟡 started)
+- Mint cell backgrounds when events exist, black text
+- Engineer initials badge on each chip
+- Click chip → modal with full lifecycle + cycle time
+- Ticket ID in modal links to Linear
+
+### Metrics
+- Avg cycle time in header
+- Weekly 5-release goal: ✅/⬜ on each Sunday
+- Per-engineer ticket counts (released / in review / in progress) below calendar
+
+### Data Pipeline
+- Release bot → engcal on every production deploy
+- Linear webhook → live updates on state changes (started / in review / completed)
+- Seed script for manual backfill (April 2026 seeded: 61 tickets)
 
 ---
 
-## Status
+## 🔲 Next Up
 
-### Done
-- [x] Project scaffolded (Next.js + InstantDB)
-- [x] InstantDB schema (features entity with all lifecycle dates)
-- [x] Monthly calendar grid with Mon–Sun layout
-- [x] Color-coded project chips with event type icons
-- [x] Feature detail modal with cycle time calculation
-- [x] Avg cycle time in header
-- [x] `/api/add-release` endpoint (ENGCAL_SECRET auth, upsert by ticketId)
-- [x] Schema pushed to InstantDB
-- [x] Deployed to GitHub
+### High Priority
+- **Confirm Linear webhook is working** — ask boss if URL is `https://engcal.vercel.app/api/linear-webhook` and Issues event is checked
+- **Fix project detection** — all tickets showing as "web"; find actual Linear team names and update detection logic in webhook handler + seed script
 
-### Pending
-- [ ] Deploy to Vercel + set env vars
-- [ ] Connect release bot (add ENGCAL_URL + ENGCAL_SECRET to releasebot)
-- [ ] Pull startDate from Linear when ticket moves to In Progress
-- [ ] Manual entry form for demo dates
-- [ ] Seed historical data (back-fill past releases)
+### Medium Priority
+- **Per-project cycle time** — add breakdown by project (web/mobile/functions/server) alongside overall avg in header
+- **Matheus name fix** — his Linear profile has no last name; ask him to add "Matiazzo" in Linear settings so re-seeds show "MM" automatically
+
+### Lower Priority
+- **Monthly auto-seed** — run seed script at start of each month for new month's data
+- **Remove debug messages** from #releasebotreview (🔍 posts) once next deploy confirms end-to-end flow works
 
 ---
 
-## Env Variables
-
-| Variable | Description | Status |
-|---|---|---|
-| `NEXT_PUBLIC_INSTANT_APP_ID` | InstantDB app ID (`867b7b82-...`) | Set |
-| `INSTANT_ADMIN_TOKEN` | InstantDB admin token | Set |
-| `ENGCAL_SECRET` | Auth secret for release bot API calls | Set (`engcal-secret-2026`) |
+## Data Notes
+- InstantDB App ID: `867b7b82-9ef5-4467-864f-34d51728c0eb`
+- All tickets currently labeled "web" (project detection not working)
+- Seed script filtered to: completed OR active (started/inReview) issues with startedAt in April 2026
+- releaseDate only set when explicitly provided — no Date.now() fallback (fixed bug where all tickets landed on seed date)
