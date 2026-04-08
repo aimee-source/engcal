@@ -12,9 +12,9 @@ const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> 
 };
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  start:   { bg: "bg-yellow-200", text: "text-yellow-800", icon: "🟡" },
-  demo:    { bg: "bg-green-200",  text: "text-green-800",  icon: "🟢" },
-  release: { bg: "bg-blue-200",   text: "text-blue-800",   icon: "🔵" },
+  start:   { bg: "bg-yellow-500/20", text: "text-yellow-300", icon: "🟡" },
+  demo:    { bg: "bg-green-500/20",  text: "text-green-300",  icon: "🟢" },
+  release: { bg: "bg-blue-500/20",   text: "text-blue-300",   icon: "🔵" },
 };
 const EVENT_ICONS: Record<string, string> = {
   start:   EVENT_COLORS.start.icon,
@@ -117,9 +117,9 @@ export default function Home() {
             ))}
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-yellow-600">{EVENT_COLORS.start.icon} started</span>
-            <span className="text-green-600">{EVENT_COLORS.demo.icon} demo&apos;d</span>
-            <span className="text-blue-600">{EVENT_COLORS.release.icon} released</span>
+            <span className="text-yellow-300">{EVENT_COLORS.start.icon} started</span>
+            <span className="text-green-300">{EVENT_COLORS.demo.icon} demo&apos;d</span>
+            <span className="text-blue-300">{EVENT_COLORS.release.icon} released</span>
           </div>
         </div>
       </header>
@@ -159,13 +159,13 @@ export default function Home() {
                   key={i}
                   className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
                     !isCurrentMonth ? "bg-zinc-900/30" :
-                    hasEvents ? "bg-[#c8f5e4]" : ""
+                    hasEvents ? "bg-[#3d1f08]" : ""
                   }`}
                 >
                   {isCurrentMonth && (
                     <>
                       <div className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                        isToday ? "bg-blue-600 text-white" : "text-zinc-600"
+                        isToday ? "bg-blue-600 text-white" : "text-zinc-400"
                       }`}>
                         {dayNum}
                       </div>
