@@ -68,14 +68,19 @@ export default function Home() {
     return d.getFullYear() === year && d.getMonth() === month;
   });
 
-  // Build map: dateKey -> DayEvent[] — each ticket appears once, on its release date
+  // Build map: dateKey -> DayEvent[]
   const eventsByDay = new Map<string, DayEvent[]>();
   for (const f of visibleFeatures) {
-    if (!f.releaseDate) continue;
-    const d = new Date(f.releaseDate);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
-    eventsByDay.get(key)!.push({ feature: f, type: "release" });
+    const add = (ts: number | undefined, type: DayEvent["type"]) => {
+      if (!ts) return;
+      const d = new Date(ts);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      if (!eventsByDay.has(key)) eventsByDay.set(key, []);
+      eventsByDay.get(key)!.push({ feature: f, type });
+    };
+    add(f.startDate, "start");
+    add(f.demoDate, "demo");
+    add(f.releaseDate, "release");
   }
 
   function prevMonth() {
