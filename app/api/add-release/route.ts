@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   const releases: { ticketId: string; title: string; project: string; linearUrl?: string; dri?: string; startDate?: number; demoDate?: number; releaseDate?: number }[] = body.releases ?? [];
-  const batchReleaseDate: number = body.releaseDate ?? Date.now();
+  const batchReleaseDate: number | undefined = body.releaseDate;
 
   if (!Array.isArray(releases) || releases.length === 0) {
     return NextResponse.json({ error: "No releases provided" }, { status: 400 });
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       ticketId: r.ticketId,
       title: r.title,
       project: r.project,
-      releaseDate: r.releaseDate ?? batchReleaseDate,
+      ...(r.releaseDate ?? batchReleaseDate ? { releaseDate: r.releaseDate ?? batchReleaseDate } : {}),
       ...(r.linearUrl ? { linearUrl: r.linearUrl } : {}),
       ...(r.dri ? { dri: r.dri } : {}),
       ...(r.startDate ? { startDate: r.startDate } : {}),
