@@ -7,7 +7,7 @@
  * Run: node scripts/seed-from-linear.mjs
  */
 
-const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "lin_api_DMNohFDiWEFlqWMFrmBUf4rDZfvwCZ1J9Hh7VSk7";
+const LINEAR_API_KEY = process.env.LINEAR_API_KEY;
 const ENGCAL_URL = process.env.ENGCAL_URL || "https://engcal.vercel.app";
 const ENGCAL_SECRET = process.env.ENGCAL_SECRET || "engcal-secret-2026";
 
