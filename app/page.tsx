@@ -12,9 +12,9 @@ const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> 
 };
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  start:   { bg: "bg-yellow-500/20", text: "text-yellow-300", icon: "🟡" },
-  demo:    { bg: "bg-green-500/20",  text: "text-green-300",  icon: "🟢" },
-  release: { bg: "bg-blue-500/20",   text: "text-blue-300",   icon: "🔵" },
+  start:   { bg: "bg-yellow-500/20", text: "text-black", icon: "🟡" },
+  demo:    { bg: "bg-green-500/20",  text: "text-black", icon: "🟢" },
+  release: { bg: "bg-blue-500/20",   text: "text-black", icon: "🔵" },
 };
 const EVENT_ICONS: Record<string, string> = {
   start:   EVENT_COLORS.start.icon,
@@ -159,13 +159,13 @@ export default function Home() {
                   key={i}
                   className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
                     !isCurrentMonth ? "bg-zinc-900/30" :
-                    hasEvents ? "bg-[#3d1f08]" : ""
+                    hasEvents ? "bg-[#c8f5e4]" : ""
                   }`}
                 >
                   {isCurrentMonth && (
                     <>
                       <div className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                        isToday ? "bg-blue-600 text-white" : "text-zinc-400"
+                        isToday ? "bg-blue-600 text-white" : hasEvents ? "text-black" : "text-zinc-400"
                       }`}>
                         {dayNum}
                       </div>
