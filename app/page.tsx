@@ -11,10 +11,15 @@ const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> 
   other:     { bg: "bg-zinc-800",      text: "text-zinc-300",   dot: "bg-zinc-500" },
 };
 
+const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
+  start:   { bg: "bg-yellow-500/20", text: "text-yellow-300", icon: "🟡" },
+  demo:    { bg: "bg-zinc-600/40",   text: "text-zinc-300",   icon: "⚪" },
+  release: { bg: "bg-blue-500/20",   text: "text-blue-300",   icon: "🔵" },
+};
 const EVENT_ICONS: Record<string, string> = {
-  start:   "🟢",
-  demo:    "🟡",
-  release: "🔵",
+  start:   EVENT_COLORS.start.icon,
+  demo:    EVENT_COLORS.demo.icon,
+  release: EVENT_COLORS.release.icon,
 };
 
 type Feature = {
@@ -111,10 +116,10 @@ export default function Home() {
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span>{EVENT_ICONS.start} started</span>
-            <span>{EVENT_ICONS.demo} demo</span>
-            <span>{EVENT_ICONS.release} released</span>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-yellow-300">{EVENT_COLORS.start.icon} started</span>
+            <span className="text-zinc-400">{EVENT_COLORS.demo.icon} demo&apos;d</span>
+            <span className="text-blue-300">{EVENT_COLORS.release.icon} released</span>
           </div>
         </div>
       </header>
@@ -166,14 +171,14 @@ export default function Home() {
                       </div>
                       <div className="space-y-0.5">
                         {events.map((ev, ei) => {
-                          const c = colors(ev.feature.project);
+                          const ec = EVENT_COLORS[ev.type];
                           return (
                             <button
                               key={ei}
                               onClick={() => setSelected(ev.feature)}
-                              className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${c.bg} ${c.text} hover:opacity-80`}
+                              className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${ec.bg} ${ec.text} hover:opacity-80`}
                             >
-                              <span className="shrink-0">{EVENT_ICONS[ev.type]}</span>
+                              <span className="shrink-0">{ec.icon}</span>
                               <span className="truncate">{ev.feature.title}</span>
                             </button>
                           );
