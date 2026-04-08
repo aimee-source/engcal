@@ -148,10 +148,14 @@ export default function Home() {
                 : "";
               const events = dateKey ? (eventsByDay.get(dateKey) ?? []) : [];
 
+              const hasEvents = events.length > 0;
               return (
                 <div
                   key={i}
-                  className={`min-h-28 p-2 border-b border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
+                  className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
+                    !isCurrentMonth ? "bg-zinc-900/30" :
+                    hasEvents ? "bg-[#3d1f08]" : ""
+                  }`}
                 >
                   {isCurrentMonth && (
                     <>
