@@ -3,13 +3,6 @@
 import { useState } from "react";
 import { db } from "@/lib/db";
 
-const PROJECT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  web:       { bg: "bg-blue-900/60",   text: "text-blue-300",   dot: "bg-blue-400" },
-  server:    { bg: "bg-violet-900/60", text: "text-violet-300", dot: "bg-violet-400" },
-  mobile:    { bg: "bg-orange-900/60", text: "text-orange-300", dot: "bg-orange-400" },
-  functions: { bg: "bg-green-900/60",  text: "text-green-300",  dot: "bg-green-400" },
-  other:     { bg: "bg-zinc-800",      text: "text-zinc-300",   dot: "bg-zinc-500" },
-};
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   start:   { bg: "bg-yellow-500/20", text: "text-black", icon: "🟡" },
@@ -95,7 +88,6 @@ export default function Home() {
     ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.startDate!) / 86400000, 0) / withBothDates.length)
     : null;
 
-  const colors = (project: string) => PROJECT_COLORS[project] ?? PROJECT_COLORS.other;
 
   // Per-engineer metrics
   const engStats = new Map<string, { released: number; inReview: number; inProgress: number }>();
@@ -124,14 +116,6 @@ export default function Home() {
           {avgCycleDays !== null && (
             <span>⚡ Avg cycle time: <strong className="text-white">{avgCycleDays}d</strong></span>
           )}
-          <div className="flex items-center gap-3">
-            {Object.entries(PROJECT_COLORS).filter(([k]) => k !== "other").map(([proj, c]) => (
-              <span key={proj} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-                {proj}
-              </span>
-            ))}
-          </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-yellow-300">{EVENT_COLORS.start.icon} started</span>
             <span className="text-green-300">{EVENT_COLORS.demo.icon} demo&apos;d</span>
@@ -264,9 +248,6 @@ export default function Home() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors(selected.project).bg} ${colors(selected.project).text}`}>
-                    {selected.project}
-                  </span>
                   {selected.ticketId && (
                     <a
                       href={selected.linearUrl ?? `https://linear.app/issue/${selected.ticketId}`}
