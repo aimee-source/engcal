@@ -4,15 +4,9 @@ import { useState } from "react";
 import { db } from "@/lib/db";
 
 
-const EVENT_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  start:   { bg: "bg-yellow-500/20", text: "text-black", icon: "🟡" },
-  demo:    { bg: "bg-green-500/20",  text: "text-black", icon: "🟢" },
-  release: { bg: "bg-blue-500/20",   text: "text-black", icon: "🔵" },
-};
-const EVENT_ICONS: Record<string, string> = {
-  start:   EVENT_COLORS.start.icon,
-  demo:    EVENT_COLORS.demo.icon,
-  release: EVENT_COLORS.release.icon,
+const EVENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  demo:    { bg: "bg-green-500/20",  text: "text-black", label: "Demo" },
+  release: { bg: "bg-blue-500/20",   text: "text-black", label: "Launch" },
 };
 
 type Feature = {
@@ -54,15 +48,15 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-  // Build map: dateKey -> DayEvent[] — each ticket once, at its latest status
+  // Build map: dateKey -> DayEvent[] — only demo and release events
   const eventsByDay = new Map<string, DayEvent[]>();
   for (const f of features) {
     const [ts, type]: [number | undefined, DayEvent["type"]] = f.releaseDate
       ? [f.releaseDate, "release"]
       : f.demoDate
       ? [f.demoDate, "demo"]
-      : [f.startDate, "start"];
-    if (!ts) continue;
+      : [undefined, "start"];
+    if (!ts) continue; // skip started-only tickets
     const d = new Date(ts);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     if (!eventsByDay.has(key)) eventsByDay.set(key, []);
@@ -102,9 +96,8 @@ export default function Home() {
             <span>⚡ Avg cycle time: <strong className="text-white">{avgCycleDays}d</strong></span>
           )}
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-yellow-300">{EVENT_COLORS.start.icon} started</span>
-            <span className="text-green-300">{EVENT_COLORS.demo.icon} demo&apos;d</span>
-            <span className="text-blue-300">{EVENT_COLORS.release.icon} released</span>
+            <span className="text-green-300">🟢 demo</span>
+            <span className="text-blue-300">🔵 launch</span>
           </div>
         </div>
       </header>
@@ -171,7 +164,6 @@ export default function Home() {
                               onClick={() => setSelected(ev.feature)}
                               className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${ec.bg} ${ec.text} hover:opacity-80`}
                             >
-                              <span className="shrink-0">{ec.icon}</span>
                               <span className="truncate flex-1">{ev.feature.title}</span>
                               {ev.feature.dri && (
                                 <span className="shrink-0 w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-semibold">
@@ -225,19 +217,19 @@ export default function Home() {
             <div className="space-y-2 text-sm">
               {selected.startDate && (
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">{EVENT_ICONS.start} Started</span>
+                  <span className="text-zinc-400">🟡 Started</span>
                   <span className="font-medium text-white">{new Date(selected.startDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.demoDate && (
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">{EVENT_ICONS.demo} Demo&apos;d to Product</span>
+                  <span className="text-zinc-400">🟢 Demo</span>
                   <span className="font-medium text-white">{new Date(selected.demoDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.releaseDate && (
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">{EVENT_ICONS.release} Released to Production</span>
+                  <span className="text-zinc-400">🔵 Production Launch</span>
                   <span className="font-medium text-white">{new Date(selected.releaseDate).toLocaleDateString()}</span>
                 </div>
               )}
