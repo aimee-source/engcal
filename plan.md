@@ -9,7 +9,8 @@ Live engineering velocity calendar that automatically tracks every feature from 
 
 ### Core Calendar
 - Monthly grid, Mon–Sun, navigate months
-- Each ticket shows once at its latest status (🔵 released / 🟢 in review / 🟡 started)
+- Each ticket shows once at its latest status (🔵 released / 🟢 in review)
+- Started-only tickets hidden from calendar (no visual noise)
 - Mint cell backgrounds when events exist, black text
 - Engineer initials badge on each chip
 - Click chip → modal with full lifecycle + cycle time
@@ -18,7 +19,6 @@ Live engineering velocity calendar that automatically tracks every feature from 
 ### Metrics
 - Avg cycle time in header
 - Weekly 5-release goal: ✅/⬜ on each Sunday
-- Per-engineer ticket counts (released / in review / in progress) below calendar
 
 ### Data Pipeline
 - Release bot → engcal on every production deploy
@@ -31,20 +31,23 @@ Live engineering velocity calendar that automatically tracks every feature from 
 
 ### High Priority
 - **Confirm Linear webhook is working** — ask boss if URL is `https://engcal.vercel.app/api/linear-webhook` and Issues event is checked
-- **Fix project detection** — all tickets showing as "web"; find actual Linear team names and update detection logic in webhook handler + seed script
-
-### Medium Priority
-- **Per-project cycle time** — add breakdown by project (web/mobile/functions/server) alongside overall avg in header
-- **Matheus name fix** — his Linear profile has no last name; ask him to add "Matiazzo" in Linear settings so re-seeds show "MM" automatically
 
 ### Lower Priority
+- **Remove debug 🔍 messages** from #releasebotreview once release bot end-to-end flow is confirmed working
 - **Monthly auto-seed** — run seed script at start of each month for new month's data
-- **Remove debug messages** from #releasebotreview (🔍 posts) once next deploy confirms end-to-end flow works
+
+---
+
+## Decided Against
+- Per-engineer ticket metrics — removed, too noisy
+- Multi-day feature bars — reverted, too cluttered with 60+ tickets
+- Project color distinction (web/mobile/functions/server) — removed, not needed
+- Per-project cycle time breakdown — deprioritized
 
 ---
 
 ## Data Notes
 - InstantDB App ID: `867b7b82-9ef5-4467-864f-34d51728c0eb`
-- All tickets currently labeled "web" (project detection not working)
-- Seed script filtered to: completed OR active (started/inReview) issues with startedAt in April 2026
-- releaseDate only set when explicitly provided — no Date.now() fallback (fixed bug where all tickets landed on seed date)
+- Project field not reliable — all tickets labeled "web", doesn't matter
+- Seed script: completed OR active (started/inReview) issues with startedAt in April 2026
+- releaseDate only set when explicitly provided — no Date.now() fallback

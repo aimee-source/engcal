@@ -1,7 +1,7 @@
 # engcal — Claude Context
 
 ## What This Project Is
-A public engineering velocity calendar for Avida. Shows every feature's current status — started, in review, or released — on a monthly calendar grid. Each ticket appears once at its latest status. Inspired by Anthropic's 2026 shipping log.
+A public engineering velocity calendar for Avida. Shows every feature's current status — in review or released — on a monthly calendar grid. Each ticket appears once at its latest status. Inspired by Anthropic's 2026 shipping log.
 
 Deployed at: `https://engcal.vercel.app`
 
@@ -38,7 +38,7 @@ instant.schema.ts               → InstantDB schema
 features: {
   ticketId: string (unique, indexed)  // e.g. "S2-7306"
   title: string                        // feature name from Linear
-  project: string                      // "web" | "server" | "mobile" | "functions"
+  project: string                      // "web" | "server" | "mobile" | "functions" (not reliable, don't use for display)
   dri?: string                         // assignee full name (from Linear)
   startDate?: number                   // timestamp — when work began (Linear startedAt)
   demoDate?: number                    // timestamp — when ticket moved to "In Review"
@@ -52,17 +52,21 @@ features: {
 
 ## Calendar Behavior
 - Monthly grid (Mon–Sun), navigate with ‹ ›
-- Each ticket appears **once** at its latest status date:
+- Each ticket appears **once** at its latest status:
   - 🔵 released → shown on releaseDate
   - 🟢 in review → shown on demoDate
-  - 🟡 started → shown on startDate
+  - Started-only tickets are **hidden** (no chip shown)
 - Chips show truncated title + engineer initials badge
 - Cells with events have mint (`#c8f5e4`) background, black text
 - Click any chip → modal with full lifecycle + cycle time (startDate → releaseDate)
 - Ticket ID in modal links to Linear
 - Header shows avg cycle time across all completed features
 - Sunday cells show weekly goal: ✅ if 5+ released that week, ⬜ if not
-- Bottom section shows per-engineer ticket counts (released / in review / in progress)
+
+### Things we decided NOT to do
+- Per-engineer metrics section — too noisy
+- Multi-day feature bars — too cluttered with 60+ tickets
+- Project color distinction — not needed
 
 ---
 
@@ -146,7 +150,5 @@ node -e "const {init}=require('@instantdb/admin');const db=init({appId:'867b7b82
 ---
 
 ## Known Issues / Pending
-- [ ] Project detection broken — all tickets show as "web"; need to map actual Linear team names
-- [ ] Per-project cycle time — header shows overall avg only; doc calls for per-project breakdown
-- [ ] Matheus's DRI is stored as "matheus@system2.fitness" from Linear (no last name in profile); manually fixed to "Matheus Matiazzo" in DB but will revert on re-seed
-- [ ] Linear webhook confirmation pending — boss set it up, need to verify URL + Issues event checked
+- [ ] Linear webhook confirmation pending — confirm with boss that URL is `https://engcal.vercel.app/api/linear-webhook` and Issues event is checked
+- [ ] Matheus's DRI stored as "matheus@system2.fitness" from Linear (no last name); manually fixed in DB but will revert on re-seed
