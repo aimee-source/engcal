@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       team?: { name: string };
       assignee?: { name: string };
       state?: { name: string; type: string };
+      labels?: { nodes: { name: string }[] };
     };
   };
 
@@ -43,6 +44,12 @@ export async function POST(request: NextRequest) {
 
   const issue = payload.data;
   if (!issue.identifier) return NextResponse.json({ ok: true });
+
+  // Only track issues with the "feature" label
+  const hasFeatureLabel = issue.labels?.nodes?.some(
+    l => l.name.toLowerCase() === "feature"
+  );
+  if (!hasFeatureLabel) return NextResponse.json({ ok: true });
 
   const stateType = issue.state?.type ?? "";
   const stateName = (issue.state?.name ?? "").toLowerCase();

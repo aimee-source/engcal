@@ -86,8 +86,9 @@ async function fetchIssues(filter) {
 async function main() {
   console.log(`Fetching April 2026 issues...`);
 
-  const completedFilter = `{ state: { type: { in: ["completed"] } } completedAt: { gte: "${SINCE.toISOString()}", lte: "${UNTIL.toISOString()}" } }`;
-  const activeFilter = `{ state: { type: { in: ["started", "inReview"] } } startedAt: { gte: "${SINCE.toISOString()}" } }`;
+  const labelFilter = `labels: { some: { name: { eq: "feature" } } }`;
+  const completedFilter = `{ ${labelFilter} state: { type: { in: ["completed"] } } completedAt: { gte: "${SINCE.toISOString()}", lte: "${UNTIL.toISOString()}" } }`;
+  const activeFilter = `{ ${labelFilter} state: { type: { in: ["started", "inReview"] } } startedAt: { gte: "${SINCE.toISOString()}" } }`;
 
   const [completed, active] = await Promise.all([
     fetchIssues(completedFilter),
