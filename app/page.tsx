@@ -210,7 +210,7 @@ export default function Home() {
                   >
                     <span className="truncate flex-1">{bar.feature.title}</span>
                     {bar.feature.dri && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-semibold ml-1">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-semibold ml-1">
                         {bar.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
                       </span>
                     )}
