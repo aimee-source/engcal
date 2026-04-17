@@ -96,7 +96,7 @@ export default function Home() {
     const rawBars: Omit<WeekBar, "row">[] = [];
     for (const f of features) {
       const barStartMs = f.demoDate ?? f.releaseDate;
-      const barEndMs = f.releaseDate ?? f.demoDate ?? f.startDate;
+      const barEndMs = f.releaseDate ?? Date.now();
       if (!barStartMs || !barEndMs) continue;
       const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
       if (!barType) continue;
