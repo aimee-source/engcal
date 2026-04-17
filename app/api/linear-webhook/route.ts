@@ -17,12 +17,15 @@ type IssueData = {
 async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
   const apiKey = process.env.LINEAR_API_KEY;
   if (!apiKey) return null;
+  // identifier is like "S2-7527" — Linear API filters by number (7527), not full identifier
+  const number = parseInt(identifier.split("-")[1]);
+  if (!number) return null;
   const res = await fetch("https://api.linear.app/graphql", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": apiKey },
     body: JSON.stringify({
       query: `{
-        issues(filter: { identifier: { eq: "${identifier}" } }, first: 1) {
+        issues(filter: { number: { eq: ${number} } }, first: 1) {
           nodes {
             identifier title startedAt completedAt
             team { name }
