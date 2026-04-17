@@ -200,7 +200,7 @@ export default function Home() {
                     key={bi}
                     onClick={() => setSelected(bar.feature)}
                     title={bar.feature.title}
-                    className={`truncate text-xs flex items-center px-1.5 hover:opacity-80 z-10 ${bar.barType === "release" ? "bg-blue-500 text-white" : "bg-green-500 text-white"}`}
+                    className={`truncate text-xs flex items-center px-1.5 hover:opacity-80 z-10 ${bar.barType === "release" ? "bg-blue-500 text-white" : "bg-green-500 text-black"}`}
                     style={{
                       gridColumn: `${bar.colStart + 1} / ${bar.colEnd + 2}`,
                       gridRow: bar.row + 2,
