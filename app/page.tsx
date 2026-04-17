@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { db } from "@/lib/db";
 
-const BAR_H = 22; // px per bar row
+const BAR_H = 22;
 
 type Feature = {
   id: string;
@@ -32,8 +32,8 @@ type WeekRow = { days: (number | null)[]; weekMonday: Date };
 
 function getWeekRows(year: number, month: number): WeekRow[] {
   const firstOfMonth = new Date(year, month, 1);
-  const dow = firstOfMonth.getDay(); // 0=Sun,1=Mon,...,6=Sat
-  const daysBack = dow === 0 ? 6 : dow - 1; // days back to Mon
+  const dow = firstOfMonth.getDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const lastOfMonth = new Date(year, month, daysInMonth);
   const rows: WeekRow[] = [];
@@ -54,12 +54,8 @@ function assignBarRows(bars: Omit<WeekBar, "row">[]): WeekBar[] {
   const rowEnds: number[] = [];
   return bars.map(bar => {
     let row = rowEnds.findIndex(end => end < bar.colStart);
-    if (row === -1) {
-      row = rowEnds.length;
-      rowEnds.push(bar.colEnd);
-    } else {
-      rowEnds[row] = bar.colEnd;
-    }
+    if (row === -1) { row = rowEnds.length; rowEnds.push(bar.colEnd); }
+    else rowEnds[row] = bar.colEnd;
     return { ...bar, row };
   });
 }
@@ -76,28 +72,11 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-  // dateKey -> events for day-cell indicators
-  const eventsByDay = new Map<string, { feature: Feature; type: "demo" | "release" }[]>();
-  for (const f of features) {
-    const [ts, type] = f.releaseDate
-      ? [f.releaseDate, "release" as const]
-      : f.demoDate
-      ? [f.demoDate, "demo" as const]
-      : [undefined, undefined];
-    if (!ts || !type) continue;
-    const d = new Date(ts);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
-    eventsByDay.get(key)!.push({ feature: f, type });
-  }
-
   function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
+    if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1);
   }
   function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
+    if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1);
   }
 
   const today = new Date();
@@ -108,13 +87,9 @@ export default function Home() {
     ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.startDate!) / 86400000, 0) / withBothDates.length)
     : null;
 
-  // Pre-compute bars per week (Mon–Fri only)
   const weekBars: WeekBar[][] = weekRows.map(({ weekMonday }) => {
-    const weekStartDate = new Date(weekMonday);
-    weekStartDate.setHours(0, 0, 0, 0);
-    const weekEndDate = new Date(weekMonday);
-    weekEndDate.setDate(weekMonday.getDate() + 4); // Friday
-    weekEndDate.setHours(23, 59, 59, 999);
+    const weekStartDate = new Date(weekMonday); weekStartDate.setHours(0, 0, 0, 0);
+    const weekEndDate = new Date(weekMonday); weekEndDate.setDate(weekMonday.getDate() + 4); weekEndDate.setHours(23, 59, 59, 999);
     const weekStartMs = weekStartDate.getTime();
     const weekEndMs = weekEndDate.getTime();
 
@@ -123,27 +98,15 @@ export default function Home() {
       const barStartMs = f.startDate ?? f.demoDate ?? f.releaseDate;
       const barEndMs = f.releaseDate ?? f.demoDate ?? f.startDate;
       if (!barStartMs || !barEndMs) continue;
-
       const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
       if (!barType) continue;
-
       const clampedStart = Math.max(barStartMs, weekStartMs);
       const clampedEnd = Math.min(barEndMs, weekEndMs);
       if (clampedStart > clampedEnd) continue;
-
       const colStart = Math.min(4, Math.max(0, Math.floor((clampedStart - weekStartMs) / 86400000)));
       const colEnd   = Math.min(4, Math.max(0, Math.floor((clampedEnd   - weekStartMs) / 86400000)));
-
-      rawBars.push({
-        feature: f,
-        barType,
-        colStart,
-        colEnd,
-        clippedLeft:  barStartMs < weekStartMs,
-        clippedRight: barEndMs   > weekEndMs,
-      });
+      rawBars.push({ feature: f, barType, colStart, colEnd, clippedLeft: barStartMs < weekStartMs, clippedRight: barEndMs > weekEndMs });
     }
-
     rawBars.sort((a, b) => a.colStart - b.colStart || (b.colEnd - b.colStart) - (a.colEnd - a.colStart));
     return assignBarRows(rawBars);
   });
@@ -183,118 +146,91 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Week rows */}
+          {/* Week rows — CSS grid with bars spanning columns natively */}
           {weekRows.map(({ days, weekMonday }, w) => {
             const bars = weekBars[w];
             const maxRow = bars.length > 0 ? Math.max(...bars.map(b => b.row)) + 1 : 0;
-            const barAreaHeight = maxRow * BAR_H;
 
-            // Weekly release count (Mon–Fri of this week)
             const weekStartMs = weekMonday.getTime();
             const weekEndMs = new Date(weekMonday.getFullYear(), weekMonday.getMonth(), weekMonday.getDate() + 4, 23, 59, 59).getTime();
             const weekReleaseCount = features.filter(f => f.releaseDate && f.releaseDate >= weekStartMs && f.releaseDate <= weekEndMs).length;
             const weekGoalMet = weekReleaseCount >= 5;
 
+            // Grid rows: 1 = day numbers, 2..maxRow+1 = bar rows, maxRow+2 = content
+            const CONTENT_ROW = maxRow + 2;
+            const rowTemplate = ["auto", ...Array(maxRow).fill(`${BAR_H}px`), "auto"].join(" ");
+
             return (
-              <div key={w}>
-                {/* Multi-day bar area */}
-                {barAreaHeight > 0 && (
-                  <div
-                    className="relative border-b border-zinc-800/40 bg-zinc-950"
-                    style={{ height: barAreaHeight }}
-                  >
-                    <div className="absolute inset-0 grid grid-cols-5 pointer-events-none">
-                      {Array.from({ length: 5 }).map((_, d) => (
-                        <div key={d} className={d < 4 ? "border-r border-zinc-800/40" : ""} />
-                      ))}
+              <div
+                key={w}
+                className="border-b border-zinc-800"
+                style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: rowTemplate }}
+              >
+                {/* Row 1: day number cells */}
+                {days.map((dayNum, d) => {
+                  const isCurrentMonth = dayNum !== null;
+                  const isToday = isCurrentMonth && today.getFullYear() === year && today.getMonth() === month && today.getDate() === dayNum;
+                  return (
+                    <div
+                      key={`hdr-${d}`}
+                      className={`px-2 pt-2 pb-1 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
+                      style={{ gridColumn: d + 1, gridRow: 1 }}
+                    >
+                      {isCurrentMonth && (
+                        <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white" : "text-zinc-400"}`}>
+                          {dayNum}
+                        </div>
+                      )}
                     </div>
-                    {bars.map((bar, bi) => {
-                      const leftPct  = (bar.colStart / 5) * 100;
-                      const widthPct = ((bar.colEnd - bar.colStart + 1) / 5) * 100;
-                      const colorClass = bar.barType === "release"
-                        ? "bg-blue-500 text-white"
-                        : "bg-green-500 text-white";
-                      const rLeft  = bar.clippedLeft  ? "0" : "3px";
-                      const rRight = bar.clippedRight ? "0" : "3px";
-                      return (
-                        <button
-                          key={bi}
-                          onClick={() => setSelected(bar.feature)}
-                          title={bar.feature.title}
-                          className={`absolute flex items-center text-xs px-1.5 truncate ${colorClass} hover:opacity-80 overflow-hidden`}
-                          style={{
-                            top:    bar.row * BAR_H + 3,
-                            height: BAR_H - 6,
-                            left:  `calc(${leftPct}%  + ${bar.clippedLeft  ? 0 : 2}px)`,
-                            width: `calc(${widthPct}% - ${(bar.clippedLeft ? 0 : 2) + (bar.clippedRight ? 0 : 2)}px)`,
-                            borderRadius: `${rLeft} ${rRight} ${rRight} ${rLeft}`,
-                          }}
-                        >
-                          {!bar.clippedLeft && <span className="truncate">{bar.feature.title}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                  );
+                })}
 
-                {/* Day cells */}
-                <div className="grid grid-cols-5">
-                  {days.map((dayNum, d) => {
-                    const isCurrentMonth = dayNum !== null;
-                    const isToday = isCurrentMonth &&
-                      today.getFullYear() === year &&
-                      today.getMonth() === month &&
-                      today.getDate() === dayNum;
-                    const isFriday = d === 4;
-                    const dateKey = isCurrentMonth
-                      ? `${year}-${String(month+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`
-                      : "";
-                    const events = dateKey ? (eventsByDay.get(dateKey) ?? []) : [];
+                {/* Column backgrounds for bar rows (for borders) */}
+                {maxRow > 0 && days.map((dayNum, d) => (
+                  <div
+                    key={`bar-bg-${d}`}
+                    className={`border-r border-zinc-800 ${dayNum === null ? "bg-zinc-900/30" : ""}`}
+                    style={{ gridColumn: d + 1, gridRow: `2 / span ${maxRow}` }}
+                  />
+                ))}
 
-                    return (
-                      <div
-                        key={d}
-                        className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
-                          !isCurrentMonth ? "bg-zinc-900/30" : ""
-                        }`}
-                      >
-                        {isCurrentMonth && (
-                          <>
-                            <div className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                              isToday ? "bg-blue-600 text-white" : "text-zinc-400"
-                            }`}>
-                              {dayNum}
-                            </div>
-                            <div className="space-y-0.5">
-                              {events.map((ev, ei) => (
-                                <button
-                                  key={ei}
-                                  onClick={() => setSelected(ev.feature)}
-                                  className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 hover:opacity-80 ${
-                                    ev.type === "release" ? "bg-blue-500/20 text-blue-200" : "bg-green-500/20 text-green-200"
-                                  }`}
-                                >
-                                  <span className="truncate flex-1">{ev.feature.title}</span>
-                                  {ev.feature.dri && (
-                                    <span className="shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-semibold">
-                                      {ev.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                            {isFriday && (
-                              <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-400">
-                                <span>{weekGoalMet ? "✅" : "⬜"}</span>
-                                <span>{weekReleaseCount}/5 released</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Bars — span grid columns directly */}
+                {bars.map((bar, bi) => (
+                  <button
+                    key={bi}
+                    onClick={() => setSelected(bar.feature)}
+                    title={bar.feature.title}
+                    className={`truncate text-xs flex items-center px-1.5 hover:opacity-80 z-10 ${bar.barType === "release" ? "bg-blue-500 text-white" : "bg-green-500 text-white"}`}
+                    style={{
+                      gridColumn: `${bar.colStart + 1} / ${bar.colEnd + 2}`,
+                      gridRow: bar.row + 2,
+                      margin: `3px ${bar.clippedRight ? "0" : "2px"} 3px ${bar.clippedLeft ? "0" : "2px"}`,
+                      borderRadius: `${bar.clippedLeft ? "0" : "3px"} ${bar.clippedRight ? "0" : "3px"} ${bar.clippedRight ? "0" : "3px"} ${bar.clippedLeft ? "0" : "3px"}`,
+                    }}
+                  >
+                    {!bar.clippedLeft && <span className="truncate">{bar.feature.title}</span>}
+                  </button>
+                ))}
+
+                {/* Content row: min-height cells */}
+                {days.map((dayNum, d) => {
+                  const isCurrentMonth = dayNum !== null;
+                  const isFriday = d === 4;
+                  return (
+                    <div
+                      key={`cell-${d}`}
+                      className={`min-h-20 px-2 pb-2 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
+                      style={{ gridColumn: d + 1, gridRow: CONTENT_ROW }}
+                    >
+                      {isFriday && isCurrentMonth && (
+                        <div className="flex items-center justify-end gap-1 text-xs text-zinc-400 mt-1">
+                          <span>{weekGoalMet ? "✅" : "⬜"}</span>
+                          <span>{weekReleaseCount}/5 released</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -309,12 +245,8 @@ export default function Home() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   {selected.ticketId && (
-                    <a
-                      href={selected.linearUrl ?? `https://linear.app/issue/${selected.ticketId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-zinc-500 hover:text-blue-400 hover:underline transition-colors"
-                    >
+                    <a href={selected.linearUrl ?? `https://linear.app/issue/${selected.ticketId}`} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-zinc-500 hover:text-blue-400 hover:underline transition-colors">
                       {selected.ticketId}
                     </a>
                   )}
@@ -347,24 +279,16 @@ export default function Home() {
               {selected.startDate && selected.releaseDate && (
                 <div className="flex justify-between pt-2 border-t border-zinc-700">
                   <span className="text-zinc-400">⚡ Cycle time</span>
-                  <span className="font-semibold text-white">
-                    {Math.round((selected.releaseDate - selected.startDate) / 86400000)}d
-                  </span>
+                  <span className="font-semibold text-white">{Math.round((selected.releaseDate - selected.startDate) / 86400000)}d</span>
                 </div>
               )}
             </div>
 
-            {selected.notes && (
-              <p className="mt-3 text-sm text-zinc-400 bg-zinc-800 rounded-lg p-3">{selected.notes}</p>
-            )}
+            {selected.notes && <p className="mt-3 text-sm text-zinc-400 bg-zinc-800 rounded-lg p-3">{selected.notes}</p>}
 
             {selected.linearUrl && (
-              <a
-                href={selected.linearUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 block text-center text-sm text-blue-400 hover:text-blue-300"
-              >
+              <a href={selected.linearUrl} target="_blank" rel="noopener noreferrer"
+                className="mt-4 block text-center text-sm text-blue-400 hover:text-blue-300">
                 View in Linear →
               </a>
             )}
