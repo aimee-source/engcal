@@ -82,9 +82,9 @@ export default function Home() {
   const today = new Date();
   const weekRows = getWeekRows(year, month);
 
-  const withBothDates = features.filter(f => f.startDate && f.releaseDate);
+  const withBothDates = features.filter(f => f.demoDate && f.releaseDate);
   const avgCycleDays = withBothDates.length > 0
-    ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.startDate!) / 86400000, 0) / withBothDates.length)
+    ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.demoDate!) / 86400000, 0) / withBothDates.length)
     : null;
 
   const weekBars: WeekBar[][] = weekRows.map(({ weekMonday }) => {
@@ -95,7 +95,7 @@ export default function Home() {
 
     const rawBars: Omit<WeekBar, "row">[] = [];
     for (const f of features) {
-      const barStartMs = f.startDate ?? f.demoDate ?? f.releaseDate;
+      const barStartMs = f.demoDate ?? f.releaseDate;
       const barEndMs = f.releaseDate ?? f.demoDate ?? f.startDate;
       if (!barStartMs || !barEndMs) continue;
       const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
@@ -258,12 +258,6 @@ export default function Home() {
             </div>
 
             <div className="space-y-2 text-sm">
-              {selected.startDate && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">🟡 Started</span>
-                  <span className="font-medium text-white">{new Date(selected.startDate).toLocaleDateString()}</span>
-                </div>
-              )}
               {selected.demoDate && (
                 <div className="flex justify-between">
                   <span className="text-zinc-400">🟢 Demo</span>
@@ -276,10 +270,10 @@ export default function Home() {
                   <span className="font-medium text-white">{new Date(selected.releaseDate).toLocaleDateString()}</span>
                 </div>
               )}
-              {selected.startDate && selected.releaseDate && (
+              {selected.demoDate && selected.releaseDate && (
                 <div className="flex justify-between pt-2 border-t border-zinc-700">
-                  <span className="text-zinc-400">⚡ Cycle time</span>
-                  <span className="font-semibold text-white">{Math.round((selected.releaseDate - selected.startDate) / 86400000)}d</span>
+                  <span className="text-zinc-400">⚡ Demo → Launch</span>
+                  <span className="font-semibold text-white">{Math.round((selected.releaseDate - selected.demoDate) / 86400000)}d</span>
                 </div>
               )}
             </div>
