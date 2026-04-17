@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { db } from "@/lib/db";
 
-
-
 const BAR_H = 22; // px per bar row
 
 type Feature = {
@@ -20,7 +18,6 @@ type Feature = {
   notes?: string;
 };
 
-
 type WeekBar = {
   feature: Feature;
   barType: "release" | "demo";
@@ -31,13 +28,26 @@ type WeekBar = {
   clippedRight: boolean;
 };
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
+type WeekRow = { days: (number | null)[]; weekMonday: Date };
 
-function getFirstDayOfMonth(year: number, month: number) {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1; // Mon-start
+function getWeekRows(year: number, month: number): WeekRow[] {
+  const firstOfMonth = new Date(year, month, 1);
+  const dow = firstOfMonth.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const daysBack = dow === 0 ? 6 : dow - 1; // days back to Mon
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lastOfMonth = new Date(year, month, daysInMonth);
+  const rows: WeekRow[] = [];
+  const cur = new Date(year, month, 1 - daysBack);
+  while (cur <= lastOfMonth) {
+    const days: (number | null)[] = [];
+    for (let d = 0; d < 5; d++) {
+      const date = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + d);
+      days.push(date.getMonth() === month ? date.getDate() : null);
+    }
+    rows.push({ days, weekMonday: new Date(cur) });
+    cur.setDate(cur.getDate() + 7);
+  }
+  return rows;
 }
 
 function assignBarRows(bars: Omit<WeekBar, "row">[]): WeekBar[] {
@@ -55,7 +65,7 @@ function assignBarRows(bars: Omit<WeekBar, "row">[]): WeekBar[] {
 }
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
 
 export default function Home() {
   const now = new Date();
@@ -66,7 +76,6 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
     else setMonth(m => m - 1);
@@ -76,22 +85,20 @@ export default function Home() {
     else setMonth(m => m + 1);
   }
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
-  const numWeeks = totalCells / 7;
   const today = new Date();
+  const weekRows = getWeekRows(year, month);
 
   const withBothDates = features.filter(f => f.startDate && f.releaseDate);
   const avgCycleDays = withBothDates.length > 0
     ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.startDate!) / 86400000, 0) / withBothDates.length)
     : null;
 
-  // Pre-compute bars per week
-  const weekBars: WeekBar[][] = Array.from({ length: numWeeks }, (_, w) => {
-    const weekStartDate = new Date(year, month, w * 7 - firstDay + 1);
+  // Pre-compute bars per week (Mon–Fri only)
+  const weekBars: WeekBar[][] = weekRows.map(({ weekMonday }) => {
+    const weekStartDate = new Date(weekMonday);
     weekStartDate.setHours(0, 0, 0, 0);
-    const weekEndDate = new Date(year, month, w * 7 - firstDay + 7);
+    const weekEndDate = new Date(weekMonday);
+    weekEndDate.setDate(weekMonday.getDate() + 4); // Friday
     weekEndDate.setHours(23, 59, 59, 999);
     const weekStartMs = weekStartDate.getTime();
     const weekEndMs = weekEndDate.getTime();
@@ -102,29 +109,27 @@ export default function Home() {
       const barEndMs = f.releaseDate ?? f.demoDate ?? f.startDate;
       if (!barStartMs || !barEndMs) continue;
 
+      const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
+      if (!barType) continue;
+
       const clampedStart = Math.max(barStartMs, weekStartMs);
       const clampedEnd = Math.min(barEndMs, weekEndMs);
       if (clampedStart > clampedEnd) continue;
 
-      const colStart = Math.min(6, Math.max(0, Math.round((clampedStart - weekStartMs) / 86400000)));
-      const colEnd = Math.min(6, Math.max(0, Math.round((clampedEnd - weekStartMs) / 86400000)));
-
-      const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
-      if (!barType) continue; // hide started-only tickets
+      const colStart = Math.min(4, Math.max(0, Math.round((clampedStart - weekStartMs) / 86400000)));
+      const colEnd   = Math.min(4, Math.max(0, Math.round((clampedEnd   - weekStartMs) / 86400000)));
 
       rawBars.push({
         feature: f,
         barType,
         colStart,
         colEnd,
-        clippedLeft: barStartMs < weekStartMs,
-        clippedRight: barEndMs > weekEndMs,
+        clippedLeft:  barStartMs < weekStartMs,
+        clippedRight: barEndMs   > weekEndMs,
       });
     }
 
-    // Sort by start col, then longer bars first for better row packing
     rawBars.sort((a, b) => a.colStart - b.colStart || (b.colEnd - b.colStart) - (a.colEnd - a.colStart));
-
     return assignBarRows(rawBars);
   });
 
@@ -155,7 +160,7 @@ export default function Home() {
 
         <div className="bg-zinc-950 rounded-xl border border-zinc-800 overflow-hidden">
           {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 border-b border-zinc-800">
+          <div className="grid grid-cols-5 border-b border-zinc-800">
             {DAYS.map(d => (
               <div key={d} className="py-2 text-center text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                 {d}
@@ -164,10 +169,16 @@ export default function Home() {
           </div>
 
           {/* Week rows */}
-          {Array.from({ length: numWeeks }).map((_, w) => {
+          {weekRows.map(({ days, weekMonday }, w) => {
             const bars = weekBars[w];
             const maxRow = bars.length > 0 ? Math.max(...bars.map(b => b.row)) + 1 : 0;
             const barAreaHeight = maxRow * BAR_H;
+
+            // Weekly release count (Mon–Fri of this week)
+            const weekStartMs = weekMonday.getTime();
+            const weekEndMs = new Date(weekMonday.getFullYear(), weekMonday.getMonth(), weekMonday.getDate() + 4, 23, 59, 59).getTime();
+            const weekReleaseCount = features.filter(f => f.releaseDate && f.releaseDate >= weekStartMs && f.releaseDate <= weekEndMs).length;
+            const weekGoalMet = weekReleaseCount >= 5;
 
             return (
               <div key={w}>
@@ -177,19 +188,18 @@ export default function Home() {
                     className="relative border-b border-zinc-800/40 bg-zinc-950"
                     style={{ height: barAreaHeight }}
                   >
-                    {/* Column grid lines */}
-                    <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
-                      {Array.from({ length: 7 }).map((_, d) => (
-                        <div key={d} className={d < 6 ? "border-r border-zinc-800/40" : ""} />
+                    <div className="absolute inset-0 grid grid-cols-5 pointer-events-none">
+                      {Array.from({ length: 5 }).map((_, d) => (
+                        <div key={d} className={d < 4 ? "border-r border-zinc-800/40" : ""} />
                       ))}
                     </div>
                     {bars.map((bar, bi) => {
-                      const leftPct = (bar.colStart / 7) * 100;
-                      const widthPct = ((bar.colEnd - bar.colStart + 1) / 7) * 100;
+                      const leftPct  = (bar.colStart / 5) * 100;
+                      const widthPct = ((bar.colEnd - bar.colStart + 1) / 5) * 100;
                       const colorClass = bar.barType === "release"
                         ? "bg-blue-500 text-white"
                         : "bg-green-500 text-white";
-                      const rLeft = bar.clippedLeft ? "0" : "3px";
+                      const rLeft  = bar.clippedLeft  ? "0" : "3px";
                       const rRight = bar.clippedRight ? "0" : "3px";
                       return (
                         <button
@@ -198,16 +208,14 @@ export default function Home() {
                           title={bar.feature.title}
                           className={`absolute flex items-center text-xs px-1.5 truncate ${colorClass} hover:opacity-80 overflow-hidden`}
                           style={{
-                            top: bar.row * BAR_H + 3,
+                            top:    bar.row * BAR_H + 3,
                             height: BAR_H - 6,
-                            left: `calc(${leftPct}% + ${bar.clippedLeft ? 0 : 2}px)`,
+                            left:  `calc(${leftPct}%  + ${bar.clippedLeft  ? 0 : 2}px)`,
                             width: `calc(${widthPct}% - ${(bar.clippedLeft ? 0 : 2) + (bar.clippedRight ? 0 : 2)}px)`,
                             borderRadius: `${rLeft} ${rRight} ${rRight} ${rLeft}`,
                           }}
                         >
-                          {!bar.clippedLeft && (
-                            <span className="truncate">{bar.feature.title}</span>
-                          )}
+                          {!bar.clippedLeft && <span className="truncate">{bar.feature.title}</span>}
                         </button>
                       );
                     })}
@@ -215,23 +223,14 @@ export default function Home() {
                 )}
 
                 {/* Day cells */}
-                <div className="grid grid-cols-7">
-                  {Array.from({ length: 7 }).map((_, d) => {
-                    const i = w * 7 + d;
-                    const dayNum = i - firstDay + 1;
-                    const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth;
+                <div className="grid grid-cols-5">
+                  {days.map((dayNum, d) => {
+                    const isCurrentMonth = dayNum !== null;
                     const isToday = isCurrentMonth &&
                       today.getFullYear() === year &&
                       today.getMonth() === month &&
                       today.getDate() === dayNum;
-                    const isSunday = d === 6;
-                    const weekReleaseCount = isSunday && isCurrentMonth ? features.filter(f => {
-                      if (!f.releaseDate) return false;
-                      const weekStart = new Date(year, month, dayNum - 6).getTime();
-                      const weekEnd = new Date(year, month, dayNum, 23, 59, 59).getTime();
-                      return f.releaseDate >= weekStart && f.releaseDate <= weekEnd;
-                    }).length : 0;
-                    const weekGoalMet = weekReleaseCount >= 5;
+                    const isFriday = d === 4;
 
                     return (
                       <div
@@ -247,7 +246,7 @@ export default function Home() {
                             }`}>
                               {dayNum}
                             </div>
-                            {isSunday && (
+                            {isFriday && (
                               <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-400">
                                 <span>{weekGoalMet ? "✅" : "⬜"}</span>
                                 <span>{weekReleaseCount}/5 released</span>
@@ -264,7 +263,6 @@ export default function Home() {
           })}
         </div>
       </div>
-
 
       {/* Feature detail modal */}
       {selected && (
