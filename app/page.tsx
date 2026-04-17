@@ -76,6 +76,21 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
+  // dateKey -> events for day-cell indicators
+  const eventsByDay = new Map<string, { feature: Feature; type: "demo" | "release" }[]>();
+  for (const f of features) {
+    const [ts, type] = f.releaseDate
+      ? [f.releaseDate, "release" as const]
+      : f.demoDate
+      ? [f.demoDate, "demo" as const]
+      : [undefined, undefined];
+    if (!ts || !type) continue;
+    const d = new Date(ts);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
+    eventsByDay.get(key)!.push({ feature: f, type });
+  }
+
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
     else setMonth(m => m - 1);
@@ -116,8 +131,8 @@ export default function Home() {
       const clampedEnd = Math.min(barEndMs, weekEndMs);
       if (clampedStart > clampedEnd) continue;
 
-      const colStart = Math.min(4, Math.max(0, Math.round((clampedStart - weekStartMs) / 86400000)));
-      const colEnd   = Math.min(4, Math.max(0, Math.round((clampedEnd   - weekStartMs) / 86400000)));
+      const colStart = Math.min(4, Math.max(0, Math.floor((clampedStart - weekStartMs) / 86400000)));
+      const colEnd   = Math.min(4, Math.max(0, Math.floor((clampedEnd   - weekStartMs) / 86400000)));
 
       rawBars.push({
         feature: f,
@@ -231,6 +246,10 @@ export default function Home() {
                       today.getMonth() === month &&
                       today.getDate() === dayNum;
                     const isFriday = d === 4;
+                    const dateKey = isCurrentMonth
+                      ? `${year}-${String(month+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`
+                      : "";
+                    const events = dateKey ? (eventsByDay.get(dateKey) ?? []) : [];
 
                     return (
                       <div
@@ -245,6 +264,24 @@ export default function Home() {
                               isToday ? "bg-blue-600 text-white" : "text-zinc-400"
                             }`}>
                               {dayNum}
+                            </div>
+                            <div className="space-y-0.5">
+                              {events.map((ev, ei) => (
+                                <button
+                                  key={ei}
+                                  onClick={() => setSelected(ev.feature)}
+                                  className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 hover:opacity-80 ${
+                                    ev.type === "release" ? "bg-blue-500/20 text-blue-200" : "bg-green-500/20 text-green-200"
+                                  }`}
+                                >
+                                  <span className="truncate flex-1">{ev.feature.title}</span>
+                                  {ev.feature.dri && (
+                                    <span className="shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-semibold">
+                                      {ev.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
                             </div>
                             {isFriday && (
                               <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-400">
