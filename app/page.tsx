@@ -4,16 +4,6 @@ import { useState } from "react";
 import { db } from "@/lib/db";
 
 
-const EVENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  demo:    { bg: "bg-green-500/20",  text: "text-black", label: "Demo" },
-  release: { bg: "bg-blue-500/20",   text: "text-black", label: "Launch" },
-};
-
-const BAR_COLORS: Record<string, string> = {
-  release: "bg-blue-500 text-white",
-  demo:    "bg-green-500 text-white",
-  start:   "bg-amber-500/70 text-white",
-};
 
 const BAR_H = 22; // px per bar row
 
@@ -30,10 +20,6 @@ type Feature = {
   notes?: string;
 };
 
-type DayEvent = {
-  feature: Feature;
-  type: "start" | "demo" | "release";
-};
 
 type WeekBar = {
   feature: Feature;
@@ -80,20 +66,6 @@ export default function Home() {
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
 
-  // Build map: dateKey -> DayEvent[] — only demo and release events
-  const eventsByDay = new Map<string, DayEvent[]>();
-  for (const f of features) {
-    const [ts, type]: [number | undefined, DayEvent["type"]] = f.releaseDate
-      ? [f.releaseDate, "release"]
-      : f.demoDate
-      ? [f.demoDate, "demo"]
-      : [undefined, "start"];
-    if (!ts) continue; // skip started-only tickets
-    const d = new Date(ts);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
-    eventsByDay.get(key)!.push({ feature: f, type });
-  }
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -213,7 +185,11 @@ export default function Home() {
                     {bars.map((bar, bi) => {
                       const leftPct = (bar.colStart / 7) * 100;
                       const widthPct = ((bar.colEnd - bar.colStart + 1) / 7) * 100;
-                      const colorClass = BAR_COLORS[bar.barType];
+                      const colorClass = bar.barType === "release"
+                        ? "bg-blue-500 text-white"
+                        : bar.barType === "demo"
+                        ? "bg-green-500 text-white"
+                        : "bg-amber-500 text-white";
                       const rLeft = bar.clippedLeft ? "0" : "3px";
                       const rRight = bar.clippedRight ? "0" : "3px";
                       return (
@@ -249,12 +225,6 @@ export default function Home() {
                       today.getFullYear() === year &&
                       today.getMonth() === month &&
                       today.getDate() === dayNum;
-                    const dateKey = isCurrentMonth
-                      ? `${year}-${String(month+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`
-                      : "";
-                    const events = dateKey ? (eventsByDay.get(dateKey) ?? []) : [];
-
-                    const hasEvents = events.length > 0;
                     const isSunday = d === 6;
                     const weekReleaseCount = isSunday && isCurrentMonth ? features.filter(f => {
                       if (!f.releaseDate) return false;
@@ -268,35 +238,15 @@ export default function Home() {
                       <div
                         key={d}
                         className={`min-h-28 p-2 border-b border-r border-zinc-800 ${
-                          !isCurrentMonth ? "bg-zinc-900/30" :
-                          hasEvents ? "bg-[#c8f5e4]" : ""
+                          !isCurrentMonth ? "bg-zinc-900/30" : ""
                         }`}
                       >
                         {isCurrentMonth && (
                           <>
                             <div className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${
-                              isToday ? "bg-blue-600 text-white" : hasEvents ? "text-black" : "text-zinc-400"
+                              isToday ? "bg-blue-600 text-white" : "text-zinc-400"
                             }`}>
                               {dayNum}
-                            </div>
-                            <div className="space-y-0.5">
-                              {events.map((ev, ei) => {
-                                const ec = EVENT_COLORS[ev.type];
-                                return (
-                                  <button
-                                    key={ei}
-                                    onClick={() => setSelected(ev.feature)}
-                                    className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${ec.bg} ${ec.text} hover:opacity-80`}
-                                  >
-                                    <span className="truncate flex-1">{ev.feature.title}</span>
-                                    {ev.feature.dri && (
-                                      <span className="shrink-0 w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-semibold">
-                                        {ev.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
                             </div>
                             {isSunday && (
                               <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-400">
