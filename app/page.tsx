@@ -155,6 +155,7 @@ export default function Home() {
             const weekEndMs = new Date(weekMonday.getFullYear(), weekMonday.getMonth(), weekMonday.getDate() + 4, 23, 59, 59).getTime();
             const weekReleaseCount = features.filter(f => f.releaseDate && f.releaseDate >= weekStartMs && f.releaseDate <= weekEndMs).length;
             const weekGoalMet = weekReleaseCount >= 5;
+            const isCurrentWeek = today.getTime() >= weekStartMs && today.getTime() <= weekEndMs;
 
             // Grid rows: 1 = day numbers, 2..maxRow+1 = bar rows, maxRow+2 = content
             const CONTENT_ROW = maxRow + 2;
@@ -173,7 +174,7 @@ export default function Home() {
                   return (
                     <div
                       key={`hdr-${d}`}
-                      className={`px-2 pt-2 pb-1 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
+                      className={`px-2 pt-2 pb-1 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
                       style={{ gridColumn: d + 1, gridRow: 1 }}
                     >
                       {isCurrentMonth && (
@@ -189,7 +190,7 @@ export default function Home() {
                 {maxRow > 0 && days.map((dayNum, d) => (
                   <div
                     key={`bar-bg-${d}`}
-                    className={`border-r border-zinc-800 ${dayNum === null ? "bg-zinc-900/30" : ""}`}
+                    className={`border-r border-zinc-800 ${dayNum === null ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
                     style={{ gridColumn: d + 1, gridRow: `2 / span ${maxRow}` }}
                   />
                 ))}
@@ -210,7 +211,7 @@ export default function Home() {
                   >
                     <span className="truncate flex-1">{bar.feature.title}</span>
                     {bar.feature.dri && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-semibold ml-1">
+                      <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold ml-1 ${bar.barType === "release" ? "bg-white/20" : "bg-black/20"}`}>
                         {bar.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
                       </span>
                     )}
@@ -224,7 +225,7 @@ export default function Home() {
                   return (
                     <div
                       key={`cell-${d}`}
-                      className={`min-h-20 px-2 pb-2 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : ""}`}
+                      className={`min-h-20 px-2 pb-2 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
                       style={{ gridColumn: d + 1, gridRow: CONTENT_ROW }}
                     >
                       {isFriday && isCurrentMonth && (
