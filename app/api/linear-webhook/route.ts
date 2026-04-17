@@ -85,14 +85,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // If key timestamps are missing (e.g. a label was added to an already-completed issue),
-  // fetch the full issue from Linear to get accurate startedAt / completedAt
-  const needsCompletedAt = stateType === "completed" && !issue.completedAt;
-  const needsStartedAt = (stateType === "started" || stateName.includes("in review")) && !issue.startedAt;
-  if (needsCompletedAt || needsStartedAt) {
-    const full = await fetchFullIssue(issue.identifier);
-    if (full) issue = full;
-  }
+  // Always fetch full issue from Linear to ensure we have all timestamps
+  // (webhook payloads can omit completedAt/startedAt on label-change events)
+  const full = await fetchFullIssue(issue.identifier);
+  if (full) issue = full;
 
   const adminDb = getAdminDb();
   const { features: existing } = await adminDb.query({
@@ -119,8 +115,12 @@ export async function POST(request: NextRequest) {
   if (stateName.includes("in review")) {
     update.demoDate = issue.startedAt ? new Date(issue.startedAt).getTime() : Date.now();
   }
-  if (stateType === "completed" && issue.completedAt) {
-    update.releaseDate = new Date(issue.completedAt).getTime();
+  if (stateType === "completed") {
+    // For completed tickets: set releaseDate, and set demoDate from startedAt if not already stored
+    if (issue.completedAt) update.releaseDate = new Date(issue.completedAt).getTime();
+    if (!existing[0]?.demoDate && issue.startedAt) {
+      update.demoDate = new Date(issue.startedAt).getTime();
+    }
   }
 
   await adminDb.transact([adminDb.tx.features[featureId].merge(update)]);
