@@ -86,7 +86,7 @@ async function fetchIssues(filter) {
 async function main() {
   console.log(`Fetching April 2026 issues...`);
 
-  const labelFilter = `labels: { some: { name: { eq: "feature" } } }`;
+  const labelFilter = `labels: { some: { name: { eq: "Feature" } } }`;
   const completedFilter = `{ ${labelFilter} state: { type: { in: ["completed"] } } completedAt: { gte: "${SINCE.toISOString()}", lte: "${UNTIL.toISOString()}" } }`;
   const activeFilter = `{ ${labelFilter} state: { type: { in: ["started", "inReview"] } } startedAt: { gte: "${SINCE.toISOString()}" } }`;
 
