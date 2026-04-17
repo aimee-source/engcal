@@ -3,13 +3,45 @@ import { getAdminDb } from "@/lib/adminDb";
 import { id } from "@instantdb/admin";
 import * as crypto from "crypto";
 
+type IssueData = {
+  identifier: string;
+  title: string;
+  startedAt?: string;
+  completedAt?: string;
+  team?: { name: string };
+  assignee?: { name: string };
+  state?: { name: string; type: string };
+  labels?: { nodes: { name: string }[] };
+};
+
+async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
+  const apiKey = process.env.LINEAR_API_KEY;
+  if (!apiKey) return null;
+  const res = await fetch("https://api.linear.app/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": apiKey },
+    body: JSON.stringify({
+      query: `{
+        issue(id: "${identifier}") {
+          identifier title startedAt completedAt
+          team { name }
+          assignee { name }
+          state { name type }
+          labels { nodes { name } }
+        }
+      }`
+    }),
+  });
+  const data = await res.json();
+  return data?.data?.issue ?? null;
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
   // Verify Linear webhook signature
   const secret = process.env.LINEAR_WEBHOOK_SECRET;
   if (secret) {
-    const signature = request.headers.get("linear-delivery") ?? "";
     const hmac = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
     if (hmac !== request.headers.get("linear-signature")) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
@@ -19,16 +51,8 @@ export async function POST(request: NextRequest) {
   let payload: {
     type: string;
     action: string;
-    data: {
-      identifier: string;
-      title: string;
-      startedAt?: string;
-      completedAt?: string;
-      team?: { name: string };
-      assignee?: { name: string };
-      state?: { name: string; type: string };
-      labels?: { nodes: { name: string }[] };
-    };
+    data: IssueData;
+    updatedFrom?: { labelIds?: string[] };
   };
 
   try {
@@ -42,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const issue = payload.data;
+  let issue = payload.data;
   if (!issue.identifier) return NextResponse.json({ ok: true });
 
   // Only track issues with the "feature" label
@@ -57,6 +81,15 @@ export async function POST(request: NextRequest) {
   // Only care about started, inReview, or completed states
   if (!["started", "inReview", "completed"].includes(stateType)) {
     return NextResponse.json({ ok: true });
+  }
+
+  // If key timestamps are missing (e.g. a label was added to an already-completed issue),
+  // fetch the full issue from Linear to get accurate startedAt / completedAt
+  const needsCompletedAt = stateType === "completed" && !issue.completedAt;
+  const needsStartedAt = (stateType === "started" || stateName.includes("in review")) && !issue.startedAt;
+  if (needsCompletedAt || needsStartedAt) {
+    const full = await fetchFullIssue(issue.identifier);
+    if (full) issue = full;
   }
 
   const adminDb = getAdminDb();
@@ -78,12 +111,11 @@ export async function POST(request: NextRequest) {
     ...(issue.assignee?.name ? { dri: issue.assignee.name } : {}),
   };
 
-  if (stateType === "started" && issue.startedAt) {
+  if (issue.startedAt) {
     update.startDate = new Date(issue.startedAt).getTime();
   }
-  if (stateName.includes("in review") && issue.startedAt) {
-    // Use startedAt as proxy if no explicit demoDate; will be overwritten by actual demo date
-    update.demoDate = Date.now();
+  if (stateName.includes("in review")) {
+    update.demoDate = issue.startedAt ? new Date(issue.startedAt).getTime() : Date.now();
   }
   if (stateType === "completed" && issue.completedAt) {
     update.releaseDate = new Date(issue.completedAt).getTime();
