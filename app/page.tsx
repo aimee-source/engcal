@@ -23,7 +23,7 @@ type Feature = {
 
 type WeekBar = {
   feature: Feature;
-  barType: "release" | "demo" | "start";
+  barType: "release" | "demo";
   colStart: number;
   colEnd: number;
   row: number;
@@ -109,7 +109,8 @@ export default function Home() {
       const colStart = Math.min(6, Math.max(0, Math.round((clampedStart - weekStartMs) / 86400000)));
       const colEnd = Math.min(6, Math.max(0, Math.round((clampedEnd - weekStartMs) / 86400000)));
 
-      const barType: "release" | "demo" | "start" = f.releaseDate ? "release" : f.demoDate ? "demo" : "start";
+      const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
+      if (!barType) continue; // hide started-only tickets
 
       rawBars.push({
         feature: f,
@@ -187,9 +188,7 @@ export default function Home() {
                       const widthPct = ((bar.colEnd - bar.colStart + 1) / 7) * 100;
                       const colorClass = bar.barType === "release"
                         ? "bg-blue-500 text-white"
-                        : bar.barType === "demo"
-                        ? "bg-green-500 text-white"
-                        : "bg-amber-500 text-white";
+                        : "bg-green-500 text-white";
                       const rLeft = bar.clippedLeft ? "0" : "3px";
                       const rRight = bar.clippedRight ? "0" : "3px";
                       return (
