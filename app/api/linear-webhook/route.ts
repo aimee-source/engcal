@@ -22,18 +22,20 @@ async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
     headers: { "Content-Type": "application/json", "Authorization": apiKey },
     body: JSON.stringify({
       query: `{
-        issue(id: "${identifier}") {
-          identifier title startedAt completedAt
-          team { name }
-          assignee { name }
-          state { name type }
-          labels { nodes { name } }
+        issues(filter: { identifier: { eq: "${identifier}" } }, first: 1) {
+          nodes {
+            identifier title startedAt completedAt
+            team { name }
+            assignee { name }
+            state { name type }
+            labels { nodes { name } }
+          }
         }
       }`
     }),
   });
   const data = await res.json();
-  return data?.data?.issue ?? null;
+  return data?.data?.issues?.nodes?.[0] ?? null;
 }
 
 export async function POST(request: NextRequest) {
