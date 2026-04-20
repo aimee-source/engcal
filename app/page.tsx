@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "@/lib/db";
 
 const BAR_H = 22;
@@ -64,9 +64,8 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
 
 export default function Home() {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth());
   const [selected, setSelected] = useState<Feature | null>(null);
 
   const { data } = db.useQuery({ features: {} });
@@ -79,7 +78,8 @@ export default function Home() {
     if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1);
   }
 
-  const today = new Date();
+  const [today, setToday] = useState<Date>(() => new Date());
+  useEffect(() => { setToday(new Date()); }, []);
   const weekRows = getWeekRows(year, month);
 
   const withBothDates = features.filter(f => f.demoDate && f.releaseDate);
