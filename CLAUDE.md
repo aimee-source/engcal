@@ -51,36 +51,41 @@ features: {
 ---
 
 ## Calendar Behavior
-- Monthly grid (Mon–Sun), navigate with ‹ ›
-- Each ticket appears **once** at its latest status:
-  - 🔵 released → shown on releaseDate
-  - 🟢 in review → shown on demoDate
-  - Started-only tickets are **hidden** (no chip shown)
-- Chips show truncated title + engineer initials badge
-- Cells with events have mint (`#c8f5e4`) background, black text
-- Click any chip → modal with full lifecycle + cycle time (startDate → releaseDate)
+- Monthly grid **Mon–Fri only**, navigate with ‹ ›
+- Multi-day feature bars span day columns (CSS grid, Google Calendar style):
+  - 🔵 blue bar → released (demoDate → releaseDate)
+  - 🟢 green bar → in review, no release yet (demoDate → today)
+  - Bars stack in rows (interval scheduling, `assignBarRows()`)
+  - DRI initials badge on each bar
+  - Clipped bars (continuing from prev week / into next week) have flat edges
+  - Current week has subtle highlight background
+- Click any bar → modal with full lifecycle + cycle time (startDate → releaseDate)
 - Ticket ID in modal links to Linear
 - Header shows avg cycle time across all completed features
-- Sunday cells show weekly goal: ✅ if 5+ released that week, ⬜ if not
+- Friday cells show weekly goal: ✅ if 5+ released that week, ⬜ if not
+- "Today" blue circle uses `useEffect` to set date client-side (avoids SSR cache bug where server render date was used instead of browser date)
 
 ### Things we decided NOT to do
 - Per-engineer metrics section — too noisy
-- Multi-day feature bars — too cluttered with 60+ tickets
 - Project color distinction — not needed
 
 ---
 
 ## Data Flow
 
+### Releasebot (primary — real-time approvals)
+When a reviewer approves a release in the Slack releasebot, it calls `POST /api/add-release` with the ticket ID and `Date.now()` as `releaseDate`. This is the most accurate release date — reflects when the release was actually announced, not when the ticket was closed in Linear.
+
 ### Live updates (Linear webhook)
-Linear fires `POST /api/linear-webhook` on every issue state change.
+Linear fires `POST /api/linear-webhook` on every issue state change or label change.
 - State type `started` → sets `startDate`
 - State name includes "in review" → sets `demoDate`
-- State type `completed` → sets `releaseDate`
+- State type `completed` → sets `releaseDate` (from Linear `completedAt` — less accurate than releasebot)
+- If Feature label is added to an already-completed/in-review issue, webhook fetches full issue from Linear API to get accurate timestamps (requires `LINEAR_API_KEY`)
 - Auth: `LINEAR_WEBHOOK_SECRET` (HMAC-SHA256 signature verification)
 
-### Release bot
-Fires `POST /api/add-release` after every confirmed production deploy.
+### Release bot (legacy — seed only)
+Previously fired `POST /api/add-release` after deploys.
 - Sets `releaseDate` for deployed tickets
 - Pulls `startDate` and `demoDate` from Linear at deploy time
 - Auth: `ENGCAL_SECRET` in request body
@@ -126,6 +131,7 @@ Fires `POST /api/add-release` after every confirmed production deploy.
 | `INSTANT_ADMIN_TOKEN` | InstantDB admin token | Set |
 | `ENGCAL_SECRET` | Shared secret for /api/add-release | Set (`engcal-secret-2026`) |
 | `LINEAR_WEBHOOK_SECRET` | Linear webhook signing secret | Set |
+| `LINEAR_API_KEY` | Linear API key — used by webhook to fetch full issue data on label-change events | Set |
 
 ---
 
