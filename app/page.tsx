@@ -87,6 +87,38 @@ export default function Home() {
 
   const weekRows = getWeekRows(year, month);
 
+  // Metrics for the currently displayed month
+  function inMonth(ts: number) {
+    const d = new Date(ts);
+    return d.getFullYear() === year && d.getMonth() === month;
+  }
+
+  // Per-engineer: demos and releases this month
+  const engineerMap = new Map<string, { demos: number; releases: number }>();
+  for (const f of features) {
+    const dri = f.dri ?? "Unknown";
+    if (!engineerMap.has(dri)) engineerMap.set(dri, { demos: 0, releases: 0 });
+    const e = engineerMap.get(dri)!;
+    if (f.demoDate && inMonth(f.demoDate)) e.demos++;
+    if (f.releaseDate && inMonth(f.releaseDate)) e.releases++;
+  }
+  const engineerRows = [...engineerMap.entries()]
+    .filter(([, e]) => e.demos > 0 || e.releases > 0)
+    .sort((a, b) => (b[1].releases + b[1].demos) - (a[1].releases + a[1].demos));
+
+  // Per-week: demos and releases this month
+  const weekMetrics = weekRows.map(({ weekMonday }) => {
+    const wStart = weekMonday.getTime();
+    const wEnd = new Date(weekMonday.getFullYear(), weekMonday.getMonth(), weekMonday.getDate() + 4, 23, 59, 59).getTime();
+    const label = `${weekMonday.getMonth() + 1}/${weekMonday.getDate()}`;
+    let demos = 0, releases = 0;
+    for (const f of features) {
+      if (f.demoDate && f.demoDate >= wStart && f.demoDate <= wEnd) demos++;
+      if (f.releaseDate && f.releaseDate >= wStart && f.releaseDate <= wEnd) releases++;
+    }
+    return { label, demos, releases };
+  }).filter(w => w.demos > 0 || w.releases > 0);
+
   return (
     <div className="min-h-screen bg-black">
       <header className="bg-zinc-950 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
@@ -183,6 +215,61 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* Metrics section */}
+      {(engineerRows.length > 0 || weekMetrics.length > 0) && (
+        <div className="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Per-engineer */}
+          {engineerRows.length > 0 && (
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-zinc-300 mb-3">By Engineer</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-zinc-500 text-xs">
+                    <th className="text-left pb-2 font-medium">Engineer</th>
+                    <th className="text-center pb-2 font-medium"><span className="text-green-400">Demos</span></th>
+                    <th className="text-center pb-2 font-medium"><span className="text-blue-400">Releases</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {engineerRows.map(([name, e]) => (
+                    <tr key={name} className="border-t border-zinc-800">
+                      <td className="py-1.5 text-zinc-300">{name}</td>
+                      <td className="py-1.5 text-center text-green-400 font-medium">{e.demos || "—"}</td>
+                      <td className="py-1.5 text-center text-blue-400 font-medium">{e.releases || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Per-week */}
+          {weekMetrics.length > 0 && (
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-zinc-300 mb-3">By Week</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-zinc-500 text-xs">
+                    <th className="text-left pb-2 font-medium">Week of</th>
+                    <th className="text-center pb-2 font-medium"><span className="text-green-400">Demos</span></th>
+                    <th className="text-center pb-2 font-medium"><span className="text-blue-400">Releases</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekMetrics.map((w, i) => (
+                    <tr key={i} className="border-t border-zinc-800">
+                      <td className="py-1.5 text-zinc-300">{w.label}</td>
+                      <td className="py-1.5 text-center text-green-400 font-medium">{w.demos || "—"}</td>
+                      <td className="py-1.5 text-center text-blue-400 font-medium">{w.releases || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Feature detail modal */}
       {selected && (
