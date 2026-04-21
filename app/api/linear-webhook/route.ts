@@ -105,16 +105,29 @@ export async function POST(request: NextRequest) {
   let issue = payload.data;
   if (!issue.identifier) return NextResponse.json({ ok: true });
 
+  const hasFeatureLabel = issue.labels?.nodes?.some(
+    l => l.name.toLowerCase() === "feature"
+  );
+
+  // If Feature label was just removed, delete from engcal
+  const hadFeatureLabel = payload.updatedFrom?.labelIds !== undefined;
+  if (hadFeatureLabel && !hasFeatureLabel) {
+    const adminDb = getAdminDb();
+    const { features: existing } = await adminDb.query({
+      features: { $: { where: { ticketId: issue.identifier } } }
+    });
+    if (existing[0]) {
+      await adminDb.transact([adminDb.tx.features[existing[0].id].delete()]);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const stateType = issue.state?.type ?? "";
 
   // Only care about started, inReview, or completed states
   if (!["started", "inReview", "completed"].includes(stateType)) {
     return NextResponse.json({ ok: true });
   }
-
-  const hasFeatureLabel = issue.labels?.nodes?.some(
-    l => l.name.toLowerCase() === "feature"
-  );
 
   // If no Feature label, ask Claude to classify
   if (!hasFeatureLabel) {
