@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/db";
 
-const BAR_H = 22;
-
 type Feature = {
   id: string;
   ticketId: string;
@@ -18,14 +16,9 @@ type Feature = {
   notes?: string;
 };
 
-type WeekBar = {
+type Milestone = {
   feature: Feature;
-  barType: "release" | "demo";
-  colStart: number;
-  colEnd: number;
-  row: number;
-  clippedLeft: boolean;
-  clippedRight: boolean;
+  type: "demo" | "release";
 };
 
 type WeekRow = { days: (number | null)[]; weekMonday: Date };
@@ -50,16 +43,6 @@ function getWeekRows(year: number, month: number): WeekRow[] {
   return rows;
 }
 
-function assignBarRows(bars: Omit<WeekBar, "row">[]): WeekBar[] {
-  const rowEnds: number[] = [];
-  return bars.map(bar => {
-    let row = rowEnds.findIndex(end => end < bar.colStart);
-    if (row === -1) { row = rowEnds.length; rowEnds.push(bar.colEnd); }
-    else rowEnds[row] = bar.colEnd;
-    return { ...bar, row };
-  });
-}
-
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
 
@@ -67,6 +50,8 @@ export default function Home() {
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [selected, setSelected] = useState<Feature | null>(null);
+  const [today, setToday] = useState<Date>(() => new Date());
+  useEffect(() => { setToday(new Date()); }, []);
 
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
@@ -78,38 +63,29 @@ export default function Home() {
     if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1);
   }
 
-  const [today, setToday] = useState<Date>(() => new Date());
-  useEffect(() => { setToday(new Date()); }, []);
-  const weekRows = getWeekRows(year, month);
-
   const withBothDates = features.filter(f => f.demoDate && f.releaseDate);
   const avgCycleDays = withBothDates.length > 0
     ? Math.round(withBothDates.reduce((sum, f) => sum + (f.releaseDate! - f.demoDate!) / 86400000, 0) / withBothDates.length)
     : null;
 
-  const weekBars: WeekBar[][] = weekRows.map(({ weekMonday }) => {
-    const weekStartDate = new Date(weekMonday); weekStartDate.setHours(0, 0, 0, 0);
-    const weekEndDate = new Date(weekMonday); weekEndDate.setDate(weekMonday.getDate() + 4); weekEndDate.setHours(23, 59, 59, 999);
-    const weekStartMs = weekStartDate.getTime();
-    const weekEndMs = weekEndDate.getTime();
-
-    const rawBars: Omit<WeekBar, "row">[] = [];
-    for (const f of features) {
-      const barStartMs = f.demoDate ?? f.releaseDate;
-      const barEndMs = f.releaseDate ?? Date.now();
-      if (!barStartMs || !barEndMs) continue;
-      const barType: "release" | "demo" = f.releaseDate ? "release" : f.demoDate ? "demo" : null!;
-      if (!barType) continue;
-      const clampedStart = Math.max(barStartMs, weekStartMs);
-      const clampedEnd = Math.min(barEndMs, weekEndMs);
-      if (clampedStart > clampedEnd) continue;
-      const colStart = Math.min(4, Math.max(0, Math.floor((clampedStart - weekStartMs) / 86400000)));
-      const colEnd   = Math.min(4, Math.max(0, Math.floor((clampedEnd   - weekStartMs) / 86400000)));
-      rawBars.push({ feature: f, barType, colStart, colEnd, clippedLeft: barStartMs < weekStartMs, clippedRight: barEndMs > weekEndMs });
+  // Build milestone map: key = "year-month-date"
+  const milestoneMap = new Map<string, Milestone[]>();
+  for (const f of features) {
+    if (f.demoDate) {
+      const d = new Date(f.demoDate);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!milestoneMap.has(key)) milestoneMap.set(key, []);
+      milestoneMap.get(key)!.push({ feature: f, type: "demo" });
     }
-    rawBars.sort((a, b) => a.colStart - b.colStart || (b.colEnd - b.colStart) - (a.colEnd - a.colStart));
-    return assignBarRows(rawBars);
-  });
+    if (f.releaseDate) {
+      const d = new Date(f.releaseDate);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!milestoneMap.has(key)) milestoneMap.set(key, []);
+      milestoneMap.get(key)!.push({ feature: f, type: "release" });
+    }
+  }
+
+  const weekRows = getWeekRows(year, month);
 
   return (
     <div className="min-h-screen bg-black">
@@ -123,8 +99,8 @@ export default function Home() {
             <span>⚡ Avg cycle time: <strong className="text-white">{avgCycleDays}d</strong></span>
           )}
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-green-300">🟢 demo</span>
-            <span className="text-blue-300">🔵 launch</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Demo</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Release</span>
           </div>
         </div>
       </header>
@@ -146,93 +122,58 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Week rows — CSS grid with bars spanning columns natively */}
+          {/* Week rows */}
           {weekRows.map(({ days, weekMonday }, w) => {
-            const bars = weekBars[w];
-            const maxRow = bars.length > 0 ? Math.max(...bars.map(b => b.row)) + 1 : 0;
-
             const weekStartMs = weekMonday.getTime();
             const weekEndMs = new Date(weekMonday.getFullYear(), weekMonday.getMonth(), weekMonday.getDate() + 4, 23, 59, 59).getTime();
             const weekReleaseCount = features.filter(f => f.releaseDate && f.releaseDate >= weekStartMs && f.releaseDate <= weekEndMs).length;
             const weekGoalMet = weekReleaseCount >= 5;
             const isCurrentWeek = today.getTime() >= weekStartMs && today.getTime() <= weekEndMs;
 
-            // Grid rows: 1 = day numbers, 2..maxRow+1 = bar rows, maxRow+2 = content
-            const CONTENT_ROW = maxRow + 2;
-            const rowTemplate = ["auto", ...Array(maxRow).fill(`${BAR_H}px`), "auto"].join(" ");
-
             return (
-              <div
-                key={w}
-                className="border-b border-zinc-800"
-                style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: rowTemplate }}
-              >
-                {/* Row 1: day number cells */}
+              <div key={w} className="grid grid-cols-5 border-b border-zinc-800">
                 {days.map((dayNum, d) => {
                   const isCurrentMonth = dayNum !== null;
                   const isToday = isCurrentMonth && today.getFullYear() === year && today.getMonth() === month && today.getDate() === dayNum;
+                  const isFriday = d === 4;
+                  const milestones = isCurrentMonth
+                    ? (milestoneMap.get(`${year}-${month}-${dayNum}`) ?? [])
+                    : [];
+
                   return (
                     <div
-                      key={`hdr-${d}`}
-                      className={`px-2 pt-2 pb-1 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
-                      style={{ gridColumn: d + 1, gridRow: 1 }}
+                      key={d}
+                      className={`min-h-24 px-2 pt-2 pb-2 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
                     >
                       {isCurrentMonth && (
-                        <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white" : "text-zinc-400"}`}>
-                          {dayNum}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Column backgrounds for bar rows (for borders) */}
-                {maxRow > 0 && days.map((dayNum, d) => (
-                  <div
-                    key={`bar-bg-${d}`}
-                    className={`border-r border-zinc-800 ${dayNum === null ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
-                    style={{ gridColumn: d + 1, gridRow: `2 / span ${maxRow}` }}
-                  />
-                ))}
-
-                {/* Bars — span grid columns directly */}
-                {bars.map((bar, bi) => (
-                  <button
-                    key={bi}
-                    onClick={() => setSelected(bar.feature)}
-                    title={bar.feature.title}
-                    className={`truncate text-xs flex items-center px-1.5 hover:opacity-80 z-10 ${bar.barType === "release" ? "bg-blue-500 text-white" : "bg-green-500 text-black"}`}
-                    style={{
-                      gridColumn: `${bar.colStart + 1} / ${bar.colEnd + 2}`,
-                      gridRow: bar.row + 2,
-                      margin: `3px ${bar.clippedRight ? "0" : "2px"} 3px ${bar.clippedLeft ? "0" : "2px"}`,
-                      borderRadius: `${bar.clippedLeft ? "0" : "3px"} ${bar.clippedRight ? "0" : "3px"} ${bar.clippedRight ? "0" : "3px"} ${bar.clippedLeft ? "0" : "3px"}`,
-                    }}
-                  >
-                    <span className="truncate flex-1">{bar.feature.title}</span>
-                    {bar.feature.dri && (
-                      <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold ml-1 ${bar.barType === "release" ? "bg-white/20" : "bg-black/20"}`}>
-                        {bar.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
-                  </button>
-                ))}
-
-                {/* Content row: min-height cells */}
-                {days.map((dayNum, d) => {
-                  const isCurrentMonth = dayNum !== null;
-                  const isFriday = d === 4;
-                  return (
-                    <div
-                      key={`cell-${d}`}
-                      className={`min-h-20 px-2 pb-2 border-r border-zinc-800 ${!isCurrentMonth ? "bg-zinc-900/30" : isCurrentWeek ? "bg-zinc-800/40" : ""}`}
-                      style={{ gridColumn: d + 1, gridRow: CONTENT_ROW }}
-                    >
-                      {isFriday && isCurrentMonth && (
-                        <div className="flex items-center justify-end gap-1 text-xs text-zinc-400 mt-1">
-                          <span>{weekGoalMet ? "✅" : "⬜"}</span>
-                          <span>{weekReleaseCount}/5 released</span>
-                        </div>
+                        <>
+                          <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1 ${isToday ? "bg-blue-600 text-white" : "text-zinc-400"}`}>
+                            {dayNum}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {milestones.map((m, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setSelected(m.feature)}
+                                title={`${m.type === "demo" ? "Demo" : "Release"}: ${m.feature.title}`}
+                                className={`w-full text-left truncate text-xs px-1.5 py-0.5 rounded flex items-center gap-1 hover:opacity-80 ${m.type === "release" ? "bg-blue-500 text-white" : "bg-green-500 text-black"}`}
+                              >
+                                <span className="truncate flex-1">{m.feature.title}</span>
+                                {m.feature.dri && (
+                                  <span className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold ${m.type === "release" ? "bg-white/20" : "bg-black/20"}`}>
+                                    {m.feature.dri.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          {isFriday && (
+                            <div className="flex items-center justify-end gap-1 text-xs text-zinc-400 mt-1">
+                              <span>{weekGoalMet ? "✅" : "⬜"}</span>
+                              <span>{weekReleaseCount}/5</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
@@ -272,13 +213,13 @@ export default function Home() {
               )}
               {selected.releaseDate && (
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">🔵 Production Launch</span>
+                  <span className="text-zinc-400">🔵 Release</span>
                   <span className="font-medium text-white">{new Date(selected.releaseDate).toLocaleDateString()}</span>
                 </div>
               )}
               {selected.demoDate && selected.releaseDate && (
                 <div className="flex justify-between pt-2 border-t border-zinc-700">
-                  <span className="text-zinc-400">⚡ Demo → Launch</span>
+                  <span className="text-zinc-400">⚡ Demo → Release</span>
                   <span className="font-semibold text-white">{Math.round((selected.releaseDate - selected.demoDate) / 86400000)}d</span>
                 </div>
               )}
