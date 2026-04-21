@@ -2,22 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/adminDb";
 import { id } from "@instantdb/admin";
 import * as crypto from "crypto";
+import Anthropic from "@anthropic-ai/sdk";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 type IssueData = {
+  id?: string;
   identifier: string;
   title: string;
+  description?: string;
   startedAt?: string;
   completedAt?: string;
   team?: { name: string };
   assignee?: { name: string };
   state?: { name: string; type: string };
-  labels?: { nodes: { name: string }[] };
+  labels?: { nodes: { id: string; name: string }[] };
 };
 
 async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
   const apiKey = process.env.LINEAR_API_KEY;
   if (!apiKey) return null;
-  // identifier is like "S2-7527" — Linear API filters by number (7527), not full identifier
   const number = parseInt(identifier.split("-")[1]);
   if (!number) return null;
   const res = await fetch("https://api.linear.app/graphql", {
@@ -27,11 +31,11 @@ async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
       query: `{
         issues(filter: { number: { eq: ${number} } }, first: 1) {
           nodes {
-            identifier title startedAt completedAt
+            id identifier title description startedAt completedAt
             team { name }
             assignee { name }
             state { name type }
-            labels { nodes { name } }
+            labels { nodes { id name } }
           }
         }
       }`
@@ -41,10 +45,38 @@ async function fetchFullIssue(identifier: string): Promise<IssueData | null> {
   return data?.data?.issues?.nodes?.[0] ?? null;
 }
 
+async function classifyAsFeature(title: string, description?: string): Promise<boolean> {
+  const prompt = `Is this a user-facing feature or meaningful product improvement (not a bug fix, refactor, script, or internal tooling)?
+
+Title: ${title}${description ? `\nDescription: ${description.slice(0, 300)}` : ""}
+
+Reply with only "yes" or "no".`;
+
+  const res = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 5,
+    messages: [{ role: "user", content: prompt }],
+  });
+  const text = res.content[0].type === "text" ? res.content[0].text.toLowerCase().trim() : "no";
+  return text.startsWith("yes");
+}
+
+async function addFeatureLabel(issueId: string, currentLabelIds: string[]): Promise<void> {
+  const featureLabelId = process.env.LINEAR_FEATURE_LABEL_ID;
+  if (!featureLabelId || !issueId) return;
+  const allLabelIds = [...new Set([...currentLabelIds, featureLabelId])];
+  await fetch("https://api.linear.app/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": process.env.LINEAR_API_KEY! },
+    body: JSON.stringify({
+      query: `mutation { issueUpdate(id: "${issueId}", input: { labelIds: ${JSON.stringify(allLabelIds)} }) { success } }`
+    }),
+  });
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
-  // Verify Linear webhook signature
   const secret = process.env.LINEAR_WEBHOOK_SECRET;
   if (secret) {
     const hmac = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
@@ -66,7 +98,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Only handle Issue events
   if (payload.type !== "Issue" || !["create", "update"].includes(payload.action)) {
     return NextResponse.json({ ok: true });
   }
@@ -74,22 +105,30 @@ export async function POST(request: NextRequest) {
   let issue = payload.data;
   if (!issue.identifier) return NextResponse.json({ ok: true });
 
-  // Only track issues with the "feature" label
-  const hasFeatureLabel = issue.labels?.nodes?.some(
-    l => l.name.toLowerCase() === "feature"
-  );
-  if (!hasFeatureLabel) return NextResponse.json({ ok: true });
-
   const stateType = issue.state?.type ?? "";
-  const stateName = (issue.state?.name ?? "").toLowerCase();
 
   // Only care about started, inReview, or completed states
   if (!["started", "inReview", "completed"].includes(stateType)) {
     return NextResponse.json({ ok: true });
   }
 
-  // Always fetch full issue from Linear to ensure we have all timestamps
-  // (webhook payloads can omit completedAt/startedAt on label-change events)
+  const hasFeatureLabel = issue.labels?.nodes?.some(
+    l => l.name.toLowerCase() === "feature"
+  );
+
+  // If no Feature label, ask Claude to classify
+  if (!hasFeatureLabel) {
+    const isFeature = await classifyAsFeature(issue.title, issue.description);
+    if (!isFeature) return NextResponse.json({ ok: true });
+
+    // Add Feature label in Linear
+    const full = await fetchFullIssue(issue.identifier);
+    if (full) issue = full;
+    const currentLabelIds = issue.labels?.nodes?.map(l => l.id) ?? [];
+    if (issue.id) await addFeatureLabel(issue.id, currentLabelIds);
+  }
+
+  // Always fetch full issue to ensure accurate timestamps
   const full = await fetchFullIssue(issue.identifier);
   if (full) issue = full;
 
@@ -99,7 +138,6 @@ export async function POST(request: NextRequest) {
   });
   const featureId = existing[0]?.id ?? id();
 
-  // Detect project from team name
   const teamName = (issue.team?.name ?? "").toLowerCase();
   const project = teamName.includes("mobile") || teamName.includes("react-native") ? "mobile"
     : teamName.includes("server") || teamName.includes("backend") || teamName.includes("function") ? "functions"
@@ -112,6 +150,8 @@ export async function POST(request: NextRequest) {
     ...(issue.assignee?.name ? { dri: issue.assignee.name } : {}),
   };
 
+  const stateName = (issue.state?.name ?? "").toLowerCase();
+
   if (issue.startedAt) {
     update.startDate = new Date(issue.startedAt).getTime();
   }
@@ -119,7 +159,6 @@ export async function POST(request: NextRequest) {
     update.demoDate = issue.startedAt ? new Date(issue.startedAt).getTime() : Date.now();
   }
   if (stateType === "completed") {
-    // For completed tickets: set releaseDate, and set demoDate from startedAt if not already stored
     if (issue.completedAt) update.releaseDate = new Date(issue.completedAt).getTime();
     if (!existing[0]?.demoDate && issue.startedAt) {
       update.demoDate = new Date(issue.startedAt).getTime();
