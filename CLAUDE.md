@@ -59,14 +59,19 @@ features: {
   - DRI initials badge on each bar
   - Clipped bars (continuing from prev week / into next week) have flat edges
   - Current week has subtle highlight background
-- Click any bar → modal with full lifecycle + cycle time (startDate → releaseDate)
-- Ticket ID in modal links to Linear
+- Each feature shows as **single-day milestone pills** (not spanning bars):
+  - 🟢 green pill on exact `demoDate`
+  - 🔵 blue pill on exact `releaseDate`
+  - Pills show truncated title + DRI initials badge; click to open detail modal
 - Header shows avg cycle time across all completed features
 - Friday cells show weekly goal: ✅ if 5+ released that week, ⬜ if not
-- "Today" blue circle uses `useEffect` to set date client-side (avoids SSR cache bug where server render date was used instead of browser date)
+- "Today" blue circle uses `useEffect` to set date client-side (avoids SSR cache bug)
+- **Metrics section below calendar** (current month only, updates on month nav):
+  - By Engineer table: DRI name | Demos | Releases
+  - By Week table: week-of date | Demos | Releases
 
 ### Things we decided NOT to do
-- Per-engineer metrics section — too noisy
+- Multi-day spanning bars — replaced with milestone pills (cleaner)
 - Project color distinction — not needed
 
 ---

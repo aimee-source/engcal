@@ -9,17 +9,18 @@ Live engineering velocity calendar that automatically tracks every feature from 
 
 ### Core Calendar
 - Monthly grid, **Mon–Fri only**, navigate months
-- Multi-day feature bars spanning day columns (CSS grid, Google Calendar style)
-  - 🔵 blue = released (demoDate → releaseDate)
-  - 🟢 green = in review / demo (demoDate → today, extends until released)
-  - Bars stack in rows (interval scheduling)
-  - DRI initials badge on each bar
-  - Clipped bars (spanning week boundaries) have flat edges + always show title
+- Single-day milestone pills per feature (no spanning bars):
+  - 🟢 green pill on `demoDate`
+  - 🔵 blue pill on `releaseDate`
+  - Each shows feature title (truncated) + DRI initials badge
   - Current week subtle highlight
-- Started-only tickets hidden from calendar (no visual noise)
-- Click bar → modal with full lifecycle + cycle time
-- Ticket ID in modal links to Linear
+- Click any pill → detail modal with dates + cycle time + Linear link
 - "Today" blue circle computed client-side (useEffect) to avoid SSR date cache bug
+
+### Metrics (below calendar, current month)
+- **By Engineer**: demos and releases per DRI this month
+- **By Week**: demos and releases per week this month
+- Both tables update automatically when navigating months
 
 ### Metrics
 - Avg cycle time in header
@@ -42,8 +43,8 @@ Live engineering velocity calendar that automatically tracks every feature from 
 ---
 
 ## Decided Against
-- Per-engineer ticket metrics — removed, too noisy
-- Project color distinction (web/mobile/functions/server) — removed, not needed
+- Multi-day spanning bars — replaced with single-day milestone pills (cleaner)
+- Project color distinction (web/mobile/functions/server) — not needed
 - Per-project cycle time breakdown — deprioritized
 - Saturday/Sunday columns — Mon–Fri only
 
