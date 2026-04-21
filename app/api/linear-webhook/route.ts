@@ -159,7 +159,8 @@ export async function POST(request: NextRequest) {
     update.demoDate = issue.startedAt ? new Date(issue.startedAt).getTime() : Date.now();
   }
   if (stateType === "completed") {
-    if (issue.completedAt) update.releaseDate = new Date(issue.completedAt).getTime();
+    // releaseDate is only set by the releasebot (when a release is actually posted in #releases)
+    // Here we just ensure demoDate is set from startedAt if not already stored
     if (!existing[0]?.demoDate && issue.startedAt) {
       update.demoDate = new Date(issue.startedAt).getTime();
     }
