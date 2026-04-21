@@ -130,7 +130,10 @@ export async function POST(request: NextRequest) {
   }
 
   // If no Feature label, ask Claude to classify
+  // But skip if the label was just removed (user explicitly un-labeled it)
+  const featureLabelWasRemoved = payload.updatedFrom?.labelIds !== undefined && !hasFeatureLabel;
   if (!hasFeatureLabel) {
+    if (featureLabelWasRemoved) return NextResponse.json({ ok: true });
     const isFeature = await classifyAsFeature(issue.title, issue.description);
     if (!isFeature) return NextResponse.json({ ok: true });
 
