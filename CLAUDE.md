@@ -18,10 +18,11 @@ Deployed at: `https://engcal.vercel.app`
 ## Project Structure
 ```
 app/
-  page.tsx                      → main calendar view (public, no auth)
+  page.tsx                      → main calendar view (auth-gated)
+  login/page.tsx                → magic code login with email allowlist
   api/
-    add-release/route.ts        → called by release bot after confirmed deploy
-    linear-webhook/route.ts     → called by Linear on any issue state change
+    add-release/route.ts        → called by releasebot after approved deploy
+    linear-webhook/route.ts     → called by Linear on issue state/label changes
 lib/
   db.ts                         → InstantDB React client
   adminDb.ts                    → InstantDB admin client (server-side)
@@ -50,19 +51,22 @@ features: {
 
 ---
 
+## Auth
+- Magic code login (`/login`) — email → 6-digit code, no OAuth
+- Allowlist of 8 authorized `@system2.fitness` emails hardcoded in `app/login/page.tsx`
+- Uses InstantDB auth: `db.auth.sendMagicCode` / `db.auth.signInWithMagicCode`
+- Main page redirects to `/login` if not authenticated; login page redirects to `/` if already signed in
+- Sign out button in header
+
+---
+
 ## Calendar Behavior
 - Monthly grid **Mon–Fri only**, navigate with ‹ ›
-- Multi-day feature bars span day columns (CSS grid, Google Calendar style):
-  - 🔵 blue bar → released (demoDate → releaseDate)
-  - 🟢 green bar → in review, no release yet (demoDate → today)
-  - Bars stack in rows (interval scheduling, `assignBarRows()`)
-  - DRI initials badge on each bar
-  - Clipped bars (continuing from prev week / into next week) have flat edges
-  - Current week has subtle highlight background
-- Each feature shows as **single-day milestone pills** (not spanning bars):
+- Single-day milestone pills per feature (no spanning bars):
   - 🟢 green pill on exact `demoDate`
   - 🔵 blue pill on exact `releaseDate`
   - Pills show truncated title + DRI initials badge; click to open detail modal
+- Current week has subtle highlight background
 - Header shows avg cycle time across all completed features
 - Friday cells show weekly goal: ✅ if 5+ released that week, ⬜ if not
 - "Today" blue circle uses `useEffect` to set date client-side (avoids SSR cache bug)
@@ -85,15 +89,12 @@ When a reviewer approves a release in the Slack releasebot, it calls `POST /api/
 Linear fires `POST /api/linear-webhook` on every issue state change or label change.
 - State type `started` → sets `startDate`
 - State name includes "in review" → sets `demoDate`
-- State type `completed` → sets `releaseDate` (from Linear `completedAt` — less accurate than releasebot)
+- Does **NOT** set `releaseDate` — only releasebot does that
+- **Auto-classification**: if a ticket lacks the Feature label, Claude Haiku (`classifyAsFeature`) decides if it's a feature; if yes, adds the Feature label in Linear automatically via `issueUpdate` mutation
+- Skips auto-classification when Feature label was explicitly removed (detects via `updatedFrom.labelIds`)
+- **Label removal**: if Feature label is removed in Linear, webhook deletes the ticket from InstantDB
 - If Feature label is added to an already-completed/in-review issue, webhook fetches full issue from Linear API to get accurate timestamps (requires `LINEAR_API_KEY`)
 - Auth: `LINEAR_WEBHOOK_SECRET` (HMAC-SHA256 signature verification)
-
-### Release bot (legacy — seed only)
-Previously fired `POST /api/add-release` after deploys.
-- Sets `releaseDate` for deployed tickets
-- Pulls `startDate` and `demoDate` from Linear at deploy time
-- Auth: `ENGCAL_SECRET` in request body
 
 ### Seed script
 `node scripts/seed-from-linear.mjs`
@@ -137,6 +138,8 @@ Previously fired `POST /api/add-release` after deploys.
 | `ENGCAL_SECRET` | Shared secret for /api/add-release | Set (`engcal-secret-2026`) |
 | `LINEAR_WEBHOOK_SECRET` | Linear webhook signing secret | Set |
 | `LINEAR_API_KEY` | Linear API key — used by webhook to fetch full issue data on label-change events | Set |
+| `ANTHROPIC_API_KEY` | Claude API — for auto-classifying tickets as features | Set |
+| `LINEAR_FEATURE_LABEL_ID` | `19e17c1a-3e85-4ccf-b171-e702298ec864` — Feature label ID in Linear | Set |
 
 ---
 
