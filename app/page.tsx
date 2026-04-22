@@ -53,8 +53,15 @@ export default function Home() {
   const [today, setToday] = useState<Date>(() => new Date());
   useEffect(() => { setToday(new Date()); }, []);
 
+  const { isLoading, user } = db.useAuth();
   const { data } = db.useQuery({ features: {} });
   const features: Feature[] = (data?.features ?? []) as Feature[];
+
+  if (isLoading) return <div className="min-h-screen bg-black" />;
+  if (!user) {
+    if (typeof window !== "undefined") window.location.href = "/login";
+    return null;
+  }
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1);
@@ -134,6 +141,12 @@ export default function Home() {
             <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Demo</span>
             <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Release</span>
           </div>
+          <button
+            onClick={() => db.auth.signOut()}
+            className="text-xs text-zinc-500 hover:text-zinc-300"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
